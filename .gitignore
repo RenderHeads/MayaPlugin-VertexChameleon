@@ -12,6 +12,7 @@
 *.so
 *.dylib
 *.dll
+*.mll
 
 # Fortran module files
 *.mod
@@ -26,3 +27,12 @@
 *.exe
 *.out
 *.app
+
+# MS Visual Studio
+*.ncb
+*.exp
+*.manifest
+*.idb
+*.suo
+*.user
+BuildLog.htm
