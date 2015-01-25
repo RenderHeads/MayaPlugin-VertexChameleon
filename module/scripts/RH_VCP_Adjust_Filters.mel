@@ -1,0 +1,242 @@
+//
+// Vertex Chameleon Maya Plugin Source Code
+// Copyright (C) 2007-2014 RenderHeads Ltd.
+//
+// This source is available for distribution and/or modification
+// only under the terms of the MIT license.  All rights reserved.
+//
+// The source is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// FITNESS FOR A PARTICULAR PURPOSE. See the MIT license
+// for more details.
+//
+
+global int $VCP_AdjustSliderMoving = 0;
+
+global proc
+VCP_AdjustFilter(string $sliderName, int $op)
+{
+	global string $RH_VCP_OldWireDisplay;
+	global int $VCP_AdjustSliderMoving;
+
+	float $amount = `floatSliderGrp -query -value $sliderName`;
+
+	if ($amount != 0.0)
+	{
+		if ($VCP_AdjustSliderMoving == 0)
+		{
+			// save source
+			VCP_CreateVertexColourStoreForSelection();
+			// full filter
+			VCP_AdjustSliderFilterApply100Command($op, true);
+			// reset to zero
+			VCP_AdjustSliderFilterCommand(0.0, $op, false);
+			$VCP_AdjustSliderMoving = 1;
+			$RH_VCP_OldWireDisplay = `displayPref -q -wsa`;
+			displayPref -wireframeOnShadedActive "none";
+			undoInfo -swf 0;
+		}
+		
+	}
+	if ($VCP_AdjustSliderMoving == 1)
+	{
+		VCP_AdjustSliderFilterCommand($amount, $op, true);
+	}
+}
+
+
+
+global proc
+VCP_AdjustSliderFilterApply100Command(int $op, int $writeNode)
+{
+	string $cmd = "RH_VertexPolyColour ";
+	if ($writeNode)
+		$cmd += "-nodeWriteDest ";
+
+	$cmd += " -op " + $op;
+	$cmd += " -forceComponent 1 ";
+
+	$cmd += " -channelMask " + `optionVar -q RH_VCP_ChannelMask` + " ";
+
+	if (`optionVar -q RH_VCP_Verbose` > 0)
+	{
+		$cmd += " -verbose";
+	}
+	if (`optionVar -query RH_VCP_NoUndo`)
+		$cmd += " -nun ";
+
+	float $blendAmount = `optionVar -query "RH_VCP_Filter_BlendAmount"` * 0.01;
+	if ($blendAmount != 0.0)
+	{
+		string $blendMode = `optionVar -query "RH_VCP_Filter_BlendMode"`;
+		
+		$cmd += " -blend " + $blendAmount;
+		$cmd += " -blendMode \"" + $blendMode + "\"";
+	}
+	eval($cmd);
+}
+
+
+global proc
+VCP_AdjustSliderFilterCommand(float $amount, int $op, int $skipundo)
+{
+	string $cmd = "RH_VertexPolyColour -op 4 -nodeSource -nodeDest ";
+	$cmd += " -masterBlend " + $amount * 0.01;
+	if (`optionVar -query RH_VCP_Verbose` > 0)
+	{
+		$cmd += " -verbose ";
+	}
+	if (`optionVar -query RH_VCP_NoUndo`)
+		$cmd += " -nun ";
+
+	$cmd += " -forceComponent 1 ";
+	$cmd += " -channelMask " + `optionVar -q RH_VCP_ChannelMask` + " ";
+
+	if ($skipundo > 0)
+	{
+		//$cmd += " -noUndo ";
+	}
+	/*int $forceComponent = `optionVar -query RH_VCP_ComponentOverride`;
+	if ($forceComponent > 1)
+	{
+		if ($forceComponent == 2)
+			$cmd += " -forceComponent 1 ";
+		if ($forceComponent == 3)
+			$cmd += " -forceComponent 2 ";
+	}*/
+	eval($cmd);
+}
+
+global proc
+VCP_FinAdjustFilter(string $sliderName, int $op)
+{
+	global string $RH_VCP_OldWireDisplay;
+	global int $VCP_AdjustSliderMoving;
+
+	float $amount = `floatSliderGrp -query -value $sliderName`;
+
+	floatSliderGrp -edit -value 0.0 $sliderName;
+
+	// If the amount is zero apply it BEFORE we reenable undo's
+	if ($amount == 0.0)
+	{
+		VCP_AdjustSliderFilterCommand($amount, $op, false);
+		undoInfo -swf 1;
+	}
+	else
+	{
+		undoInfo -swf 1;
+		VCP_AdjustSliderFilterCommand($amount, $op, false);
+	}
+
+	undoInfo -swf 0;
+	VCP_RemoveColourStoreForSelection();
+	undoInfo -swf 1;
+
+	$VCP_AdjustSliderMoving = 0;
+	displayPref -wireframeOnShadedActive $RH_VCP_OldWireDisplay;
+}
+
+proc
+VCP_SetupFilterSlider(string $sliderName, string $buttonName, int $op)
+{
+	$doCommand = ("VCP_FinAdjustFilter " + $sliderName + " " + $op);
+	floatSliderGrp -edit -changeCommand $doCommand $sliderName;
+	
+	$doCommand = ("VCP_AdjustFilter " + $sliderName + " " + $op);
+	floatSliderGrp -edit -dragCommand $doCommand $sliderName;
+
+	$doCommand = ("VCP_AdjustSliderFilterApply100Command " + $op + " false");
+	button -e -command $doCommand $buttonName;
+}
+
+proc
+VCP_CreateFrame_Filters_Content()
+{
+	columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 4;
+
+		rowLayout -numberOfColumns 2 -cw2 150 100 -adjustableColumn2 2 -columnAttach 1 "both" 2 -columnAttach 2 "both" 2;
+			string $OM_blendMode = `optionMenuGrp -cw2 60 150 -adjustableColumn 2 -columnAlign 1 "right" -columnAlign 2 "left" -label (VCP_uiRes("m_RH_VCP.kFilters_Blending"))`;
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_Replace")) -ann "Replace";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_Add")) -ann "Add";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_Subtract")) -ann "Subtract";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_Multiply")) -ann "Multiply";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_Difference")) -ann "Difference";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_Screen")) -ann "Screen";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_Overlay")) -ann "Overlay";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_LightenOnly")) -ann "Lighten Only";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_DarkenOnly")) -ann "Darken Only";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_Dodge")) -ann "Dodge";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_Burn")) -ann "Burn";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_HueReplace")) -ann "Hue Replace";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_SaturationReplace")) -ann "Saturation Replace";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_ColourReplace")) -ann "Colour Replace";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_ValueReplace")) -ann "Value Replace";
+			$SL_blend=`floatSliderGrp -l "" -field true -el "%" -cw4 1 35 1 40 -pre 0 -v 100 -min 0 -max 100 -adjustableColumn 3 `;
+		setParent ..;
+		separator;
+
+		columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 0;
+			rowLayout -numberOfColumns 2 -cw2 200 50 -columnAlign 2 "center" -adjustableColumn2 1;
+				$SL_blurRGBA=`floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kFilters_Blur")) -field true  -cw3 60 35 50 -cc "" -pre 2 -v 0 -min 0 -max 100 -adjustableColumn 3`;
+				$BN_blurRGBA=`button -w 50 -label (VCP_uiRes("m_RH_VCP.kFilters_Apply"))`;
+			setParent ..;
+			rowLayout -numberOfColumns 2 -cw2 200 50 -columnAlign 2 "center" -adjustableColumn2 1;
+				$SL_sharpenRGBA=`floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kFilters_Sharpen")) -field true  -cw3 60 35 50 -cc "" -pre 2 -v 0 -min 0 -max 100 -adjustableColumn 3`;
+				$BN_sharpenRGBA=`button -w 50 -label (VCP_uiRes("m_RH_VCP.kFilters_Apply"))`;
+			setParent ..;
+			rowLayout -numberOfColumns 2 -cw2 200 50 -columnAlign 2 "center" -adjustableColumn2 1;
+				$SL_dilateRGBA=`floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kFilters_Dilate")) -field true  -cw3 60 35 50 -cc "" -pre 2 -v 0 -min 0 -max 100 -adjustableColumn 3`;
+				$BN_dilateRGBA=`button -w 50 -label (VCP_uiRes("m_RH_VCP.kFilters_Apply"))`;
+			setParent ..;
+			rowLayout -numberOfColumns 2 -cw2 200 50 -columnAlign 2 "center" -adjustableColumn2 1;
+				$SL_erodeRGBA=`floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kFilters_Erode")) -field true  -cw3 60 35 50 -cc "" -pre 2 -v 0 -min 0 -max 100 -adjustableColumn 3`;
+				$BN_erodeRGBA=`button -w 50 -label (VCP_uiRes("m_RH_VCP.kFilters_Apply"))`;
+			setParent ..;
+		setParent ..;
+
+	setParent ..;
+
+	floatSliderGrp -edit -changeCommand ("VCP_SetVarFromSliderGroup " + $SL_blend + " RH_VCP_Filter_BlendAmount") $SL_blend;
+	optionMenuGrp -edit -changeCommand ("VCP_SetVarFromOptionMenuGrp_ByAnnotation " + $OM_blendMode + " RH_VCP_Filter_BlendMode") $OM_blendMode;
+
+	VCP_SetupFilterSlider($SL_blurRGBA, $BN_blurRGBA, 200);
+	VCP_SetupFilterSlider($SL_sharpenRGBA, $BN_sharpenRGBA, 201);
+	VCP_SetupFilterSlider($SL_erodeRGBA, $BN_erodeRGBA, 202);
+	VCP_SetupFilterSlider($SL_dilateRGBA, $BN_dilateRGBA, 203);
+
+	floatSliderGrp -edit -value `optionVar -query RH_VCP_Filter_BlendAmount` $SL_blend;
+	RH_SetOptionMenuGrpValue_ByAnnotation($OM_blendMode, `optionVar -query RH_VCP_Filter_BlendMode`);
+}
+
+global proc
+VCP_CreateFrame_Filters(int $hasFrame)
+{
+	if ($hasFrame)
+	{
+		int $frameCollapse = `optionVar -query "RH_VCP_FrameFilters"`;
+		$frame = `frameLayout -label (VCP_uiRes("m_RH_VCP.kFilters_FrameTitle"))
+					-labelIndent 4
+					-borderStyle "etchedIn"
+					-collapsable true
+					-collapse $frameCollapse
+					-marginWidth 4
+					-marginHeight 4`;
+			VCP_CreateFrame_Filters_Content();
+		setParent ..;
+
+		frameLayout	-e -collapseCommand "optionVar -intValue RH_VCP_FrameFilters 1" $frame;
+		frameLayout	-e -expandCommand "optionVar -intValue RH_VCP_FrameFilters 0" $frame;
+	}
+	else
+	{
+		$frame = `frameLayout
+					-labelVisible false
+					-borderStyle "etchedIn"
+					-collapsable false
+					-marginWidth 4
+					-marginHeight 4`;
+			VCP_CreateFrame_Filters_Content();
+		setParent ..;
+	}
+}

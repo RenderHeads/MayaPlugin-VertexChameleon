@@ -1,0 +1,114 @@
+//
+// Vertex Chameleon Maya Plugin Source Code
+// Copyright (C) 2007-2014 RenderHeads Ltd.
+//
+// This source is available for distribution and/or modification
+// only under the terms of the MIT license.  All rights reserved.
+//
+// The source is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// FITNESS FOR A PARTICULAR PURPOSE. See the MIT license
+// for more details.
+//
+
+proc
+VCP_CreateFrame_ContrastChannels_Content()
+{
+	columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 0;
+		$SL_contrastR=`floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kContrastChannels_Red")) -field true  -cw3 60 40 1 -cc "" -pre 2 -min -1 -max 1 -value 0 -adjustableColumn 3`;
+		$SL_contrastG=`floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kContrastChannels_Green")) -field true  -cw3 60 40 1 -cc "" -pre 2 -min -1 -max 1 -value 0 -adjustableColumn 3`;
+		$SL_contrastB=`floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kContrastChannels_Blue")) -field true  -cw3 60 40 1 -cc "" -pre 2 -min -1 -max 1 -value 0 -adjustableColumn 3`;
+		$SL_contrastA=`floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kContrastChannels_Alpha")) -field true  -cw3 60 40 1 -cc "" -pre 2 -min -1 -max 1 -value 0 -adjustableColumn 3`;
+		$SL_contrastH=`floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kContrastChannels_Hue")) -field true  -cw3 60 40 1 -cc "" -pre 2 -min -1 -max 1 -value 0 -adjustableColumn 3`;
+		$SL_contrastS=`floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kContrastChannels_Saturation")) -field true  -cw3 60 40 1 -cc "" -pre 2 -min -1 -max 1 -value 0 -adjustableColumn 3`;
+		$SL_contrastV=`floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kContrastChannels_Value")) -field true  -cw3 60 40 1 -cc "" -pre 2 -min -1 -max 1 -value 0 -adjustableColumn 3`;
+	setParent ..;
+
+	VCP_SetupSlider($SL_contrastR, "contrastR", 305);
+	VCP_SetupSlider($SL_contrastG, "contrastG", 305);
+	VCP_SetupSlider($SL_contrastB, "contrastB", 305);
+	VCP_SetupSlider($SL_contrastA, "contrastA", 305);
+	VCP_SetupSlider($SL_contrastH, "contrastH", 305);
+	VCP_SetupSlider($SL_contrastS, "contrastS", 305);
+	VCP_SetupSlider($SL_contrastV, "contrastV", 305);
+}
+
+global proc
+VCP_CreateFrame_ContrastChannels(int $hasFrame)
+{
+	if ($hasFrame)
+	{
+		int $frameCollapse = `optionVar -query "RH_VCP_FrameAdjustContrast"`;
+		$frame = `frameLayout -label (VCP_uiRes("m_RH_VCP.kContrastChannels_FrameTitle"))
+					-labelIndent 4
+					-borderStyle "etchedIn"
+					-collapsable true
+					-collapse $frameCollapse
+					-marginWidth 4
+					-marginHeight 4`;
+			VCP_CreateFrame_ContrastChannels_Content();
+		setParent ..;
+
+		frameLayout	-e -collapseCommand "optionVar -intValue RH_VCP_FrameAdjustContrast 1" $frame;
+		frameLayout	-e -expandCommand "optionVar -intValue RH_VCP_FrameAdjustContrast 0" $frame;
+	}
+	else
+	{
+		$frame = `frameLayout
+					-labelVisible false
+					-borderStyle "etchedIn"
+					-collapsable false
+					-marginWidth 4
+					-marginHeight 4`;
+			VCP_CreateFrame_ContrastChannels_Content();
+		setParent ..;
+	}
+}
+
+proc
+VCP_CreateFrame_BC_Content()
+{
+	columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 0;
+
+		$SL_brightness=`floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kBC_Brightness")) -field true  -cw3 60 40 1 -cc "" -pre 2 -v 0 -min -1 -max 1 -adjustableColumn 3`;
+		$SL_contrast=`floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kBC_Contrast")) -field true  -cw3 60 40 1 -cc "" -pre 2 -v 0 -min -1 -max 1 -adjustableColumn 3`;
+
+	setParent ..;
+
+	VCP_SetupSlider($SL_brightness, "brightness", 305);
+	VCP_SetupSlider($SL_contrast, "contrast", 305);
+}
+
+global proc
+VCP_CreateFrame_BC(int $hasFrame)
+{
+	if ($hasFrame)
+	{
+		int $frameCollapse = `optionVar -query "RH_VCP_FrameAdjustBC"`;
+		$frame = `frameLayout -label (VCP_uiRes("m_RH_VCP.kBC_FrameTitle"))
+					-labelIndent 4
+					-borderStyle "etchedIn"
+					-collapsable true
+					-collapse $frameCollapse
+					-marginWidth 4
+					-marginHeight 4`;
+
+			VCP_CreateFrame_BC_Content();
+
+		setParent ..;
+
+		frameLayout	-e -collapseCommand "optionVar -intValue RH_VCP_FrameAdjustBC 1" $frame;
+		frameLayout	-e -expandCommand "optionVar -intValue RH_VCP_FrameAdjustBC 0" $frame;
+	}
+	else
+	{
+		$frame = `frameLayout
+					-labelVisible false
+					-borderStyle "etchedIn"
+					-collapsable false
+					-marginWidth 4
+					-marginHeight 4`;
+			VCP_CreateFrame_BC_Content();
+		setParent ..;
+	}
+}

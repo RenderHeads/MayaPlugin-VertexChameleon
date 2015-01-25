@@ -1,0 +1,730 @@
+//
+// Vertex Chameleon Maya Plugin Source Code
+// Copyright (C) 2007-2014 RenderHeads Ltd.
+//
+// This source is available for distribution and/or modification
+// only under the terms of the MIT license.  All rights reserved.
+//
+// The source is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// FITNESS FOR A PARTICULAR PURPOSE. See the MIT license
+// for more details.
+//
+
+proc
+VCP_CreateFrame_Gradient_Sphere()
+{
+	frameLayout -label (VCP_uiRes("m_RH_VCP.kGradient_SphericalFrameTitle"))
+				-labelIndent 4
+				-borderStyle "etchedIn"
+				-collapsable true
+				-collapse true
+				-marginWidth 4
+				-marginHeight 4;
+		columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 4;
+
+			text -label (VCP_uiRes("m_RH_VCP.kGradient_CenterPoint")) -align "left";
+			$CB_overrideCenter=`checkBox -label (VCP_uiRes("m_RH_VCP.kGradient_OverrideSelection")) -align "left" -value false`;
+			rowLayout -numberOfColumns 2 -adjustableColumn 1;
+				$FF_startPos = `floatFieldGrp -numberOfFields 3 -columnAlign 1 "left" -adjustableColumn 1 -value1 0.0 -value2 0.0 -value3 0.0 -columnWidth3 50 50 50`;
+				$BN_fromSelection = `button -label (VCP_uiRes("m_RH_VCP.kGradient_GetFromSelection"))`;
+			setParent ..;
+
+			RH_VCP_BlankSeparator();
+
+			text -label (VCP_uiRes("m_RH_VCP.kGradient_Radius")) -align "left";
+			$CB_overrideRadius=`checkBox -label (VCP_uiRes("m_RH_VCP.kGradient_OverrideSelection")) -align "left" -value false`;
+			rowLayout -numberOfColumns 2 -adjustableColumn 1;
+				$FF_radius = `floatField -value 1.0`;
+				$BN_radiusFromSelection = `button -label (VCP_uiRes("m_RH_VCP.kGradient_GetFromSelection"))`;
+			setParent ..;
+
+		setParent ..;
+	setParent ..;
+
+	// Commands
+	$doCommand = "{float $tmpAvg[] = `VCP_GetCenterOfSelectionVertices`; ";
+	$doCommand += "floatFieldGrp -edit -value1 $tmpAvg[0] -value2 $tmpAvg[1] -value3 $tmpAvg[2] " + $FF_startPos + "; }";
+	$doCommand += "VCP_SetVarFromFloatFieldGrp " + $FF_startPos + " RH_VCP_GradientStartPos;";
+	button -edit -command $doCommand $BN_fromSelection;
+
+	//$doCommand = ;
+	//button -edit -command $doCommand $BN_radiusFromSelection;
+
+	$doCommand = "VCP_SetVarFromFloatFieldGrp " + $FF_startPos + " RH_VCP_GradientStartPos";
+	floatFieldGrp -edit -changeCommand $doCommand $FF_startPos;
+
+	$doCommand = "VCP_SetVarFromFloatField " + $FF_radius + " RH_VCP_GradientRadius";
+	floatField -edit -changeCommand $doCommand $FF_radius;
+
+	$doCommand = "floatFieldGrp -edit -enable false " + $FF_startPos + ";";
+	$doCommand += "button -edit -enable false " + $BN_fromSelection + ";";
+	$doCommand += "VCP_SetVarFromCheckbox " + $CB_overrideCenter + " RH_VCP_GradientOverrideCenter;";
+	checkBox -edit -offCommand $doCommand $CB_overrideCenter;
+	$doCommand = "floatFieldGrp -edit -enable true " + $FF_startPos + ";";
+	$doCommand += "button -edit -enable true " + $BN_fromSelection + ";";
+	$doCommand += "VCP_SetVarFromCheckbox " + $CB_overrideCenter + " RH_VCP_GradientOverrideCenter;";
+	checkBox -edit -onCommand $doCommand $CB_overrideCenter;
+
+	$doCommand = "floatField -edit -enable false " + $FF_radius + ";";
+	$doCommand += "button -edit -enable false " + $BN_radiusFromSelection + ";";
+	$doCommand += "VCP_SetVarFromCheckbox " + $CB_overrideRadius + " RH_VCP_GradientOverrideRadius;";
+	checkBox -edit -offCommand $doCommand $CB_overrideRadius;
+	$doCommand = "floatField -edit -enable true " + $FF_radius + ";";
+	$doCommand += "button -edit -enable true " + $BN_radiusFromSelection + ";";
+	$doCommand += "VCP_SetVarFromCheckbox " + $CB_overrideRadius + " RH_VCP_GradientOverrideRadius;";
+	checkBox -edit -onCommand $doCommand $CB_overrideRadius;
+
+	// Settings
+	{
+		float $center[] = `optionVar -query RH_VCP_GradientStartPos`;
+		floatFieldGrp -edit -value1 $center[0] -value2 $center[1] -value3 $center[2] $FF_startPos;
+
+		float $radius = `optionVar -query RH_VCP_GradientRadius`;
+		floatField -edit -value $radius $FF_radius;
+
+		if (!`optionVar -query RH_VCP_GradientOverrideCenter`)
+		{
+			floatFieldGrp -edit -enable false $FF_startPos;
+			button -edit -enable false $BN_fromSelection;
+		}
+		else
+		{
+			checkBox -edit -value true $CB_overrideCenter;
+		}
+		if (!`optionVar -query RH_VCP_GradientOverrideRadius`)
+		{
+			floatField -edit -enable false $FF_radius;
+			button -edit -enable false $BN_radiusFromSelection;
+		}
+		else
+		{
+			checkBox -edit -value true $CB_overrideRadius;
+		}
+	}
+}
+
+
+global proc float[]
+RH_VCP_GetWorldBoundsFromSelectedVertices()
+{
+	$oldSelection = `ls -selection`;
+
+	select -replace `polyListComponentConversion -tv`;
+	$verts = `filterExpand -ex true -sm 31`;
+	if (!size($verts))	
+		error (VCP_uiRes("m_VCPBase.kErrorNoVerticesSelected"));
+
+	float $bounds[];
+	// low
+	$bounds[0] = 100000.0;
+	$bounds[1] = 100000.0;
+	$bounds[2] = 100000.0;
+	// high
+	$bounds[3] = -100000.0;
+	$bounds[4] = -100000.0;
+	$bounds[5] = -100000.0;
+	for ($vtx in $verts)
+	{
+		float $pt[] = `pointPosition $vtx`;
+		$bounds[0] = min($bounds[0], $pt[0]);
+		$bounds[1] = min($bounds[1], $pt[1]);
+		$bounds[2] = min($bounds[2], $pt[2]);
+		$bounds[3] = max($bounds[3], $pt[0]);
+		$bounds[4] = max($bounds[4], $pt[1]);
+		$bounds[5] = max($bounds[5], $pt[2]);
+	}
+
+	select -replace $oldSelection;
+
+	return $bounds;
+}
+
+proc
+VCP_CreateFrame_Gradient_Linear()
+{
+	frameLayout -label (VCP_uiRes("m_RH_VCP.kGradient_LinearFrameTitle"))
+				-labelIndent 4
+				-borderStyle "etchedIn"
+				-collapsable true
+				-collapse true
+				-marginWidth 4
+				-marginHeight 4;
+		columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 4;
+
+			$CB_useWorldBounds=`checkBox -label (VCP_uiRes("m_RH_VCP.kGradient_UseWorldBounds")) -align "left" -value false`;
+			rowLayout -numberOfColumns 2 -adjustableColumn 1;
+				$FF_worldMin = `floatFieldGrp -numberOfFields 3 -columnAlign 1 "left" -adjustableColumn 1 -value1 0.0 -value2 0.0 -value3 0.0 -columnWidth3 50 50 50`;
+				$BN_fromSelectionMin = `button -label (VCP_uiRes("m_RH_VCP.kGradient_GetFromSelection"))`;
+			setParent ..;
+			rowLayout -numberOfColumns 2 -adjustableColumn 1;
+				$FF_worldMax = `floatFieldGrp -numberOfFields 3 -columnAlign 1 "left" -adjustableColumn 1 -value1 0.0 -value2 0.0 -value3 0.0 -columnWidth3 50 50 50`;
+				$BN_fromSelectionMax = `button -label (VCP_uiRes("m_RH_VCP.kGradient_GetFromSelection"))`;
+			setParent ..;
+
+		setParent ..;
+	setParent ..;
+
+	// Commands
+	{
+		$doCommand = "{float $bounds[] = `RH_VCP_GetWorldBoundsFromSelectedVertices`; ";
+		$doCommand += "floatFieldGrp -edit -value1 $bounds[0] -value2 $bounds[1] -value3 $bounds[2] " + $FF_worldMin + "; }";
+		$doCommand += "VCP_SetVarFromFloatFieldGrp " + $FF_worldMin + " RH_VCP_GradientWorldBoundsMin;";
+		button -edit -command $doCommand $BN_fromSelectionMin;
+
+		$doCommand = "{float $bounds[] = `RH_VCP_GetWorldBoundsFromSelectedVertices`; ";
+		$doCommand += "floatFieldGrp -edit -value1 $bounds[3] -value2 $bounds[4] -value3 $bounds[5] " + $FF_worldMax + "; }";
+		$doCommand += "VCP_SetVarFromFloatFieldGrp " + $FF_worldMax + " RH_VCP_GradientWorldBoundsMax;";
+		button -edit -command $doCommand $BN_fromSelectionMax;
+
+		$doCommand = "VCP_SetVarFromFloatFieldGrp " + $FF_worldMin + " RH_VCP_GradientWorldBoundsMin";
+		floatFieldGrp -edit -changeCommand $doCommand $FF_worldMin;
+
+		$doCommand = "VCP_SetVarFromFloatFieldGrp " + $FF_worldMax + " RH_VCP_GradientWorldBoundsMax";
+		floatFieldGrp -edit -changeCommand $doCommand $FF_worldMax;
+
+		$doCommand = "floatFieldGrp -edit -enable false " + $FF_worldMin + ";";
+		$doCommand += "floatFieldGrp -edit -enable false " + $FF_worldMax + ";";
+		$doCommand += "button -edit -enable false " + $BN_fromSelectionMin + ";";
+		$doCommand += "button -edit -enable false " + $BN_fromSelectionMax + ";";
+		$doCommand += "VCP_SetVarFromCheckbox " + $CB_useWorldBounds + " RH_VCP_GradientUseWorldBounds;";
+		checkBox -edit -offCommand $doCommand $CB_useWorldBounds;
+
+		$doCommand = "floatFieldGrp -edit -enable true " + $FF_worldMin + ";";
+		$doCommand += "floatFieldGrp -edit -enable true " + $FF_worldMax + ";";
+		$doCommand += "button -edit -enable true " + $BN_fromSelectionMin + ";";
+		$doCommand += "button -edit -enable true " + $BN_fromSelectionMax + ";";
+		$doCommand += "VCP_SetVarFromCheckbox " + $CB_useWorldBounds + " RH_VCP_GradientUseWorldBounds;";
+		checkBox -edit -onCommand $doCommand $CB_useWorldBounds;
+	}
+
+	// Settings
+	{
+		float $worldMin[] = `optionVar -query RH_VCP_GradientWorldBoundsMin`;
+		floatFieldGrp -edit -value1 $worldMin[0] -value2 $worldMin[1] -value3 $worldMin[2] $FF_worldMin;
+
+		float $worldMax[] = `optionVar -query RH_VCP_GradientWorldBoundsMax`;
+		floatFieldGrp -edit -value1 $worldMax[0] -value2 $worldMax[1] -value3 $worldMax[2] $FF_worldMax;
+
+		if (!`optionVar -query RH_VCP_GradientUseWorldBounds`)
+		{
+			floatFieldGrp -edit -enable false $FF_worldMin;
+			floatFieldGrp -edit -enable false $FF_worldMax;
+			button -edit -enable false $BN_fromSelectionMin;
+			button -edit -enable false $BN_fromSelectionMax;
+		}
+		else
+		{
+			checkBox -edit -value true $CB_useWorldBounds;
+		}
+	}
+}
+
+proc string
+VCP_Gradient_CreateRampShader()
+{
+	if (`objExists RH_VC_RampShader`)
+	{
+		delete RH_VC_RampShader;
+	}
+
+	string $selection[] = `ls -selection`;
+
+	string $node = `createNode -name "RH_VC_RampShader" rampShader`;
+	setAttr ($node + ".color[0].color_Position") 0.0;
+	setAttr ($node + ".color[0].color_Color") -type double3 1 1 1 ;
+	setAttr ($node + ".color[1].color_Position") 1.0;
+	setAttr ($node + ".color[1].color_Color") -type double3 0 0 0 ;
+
+	setAttr ($node + ".transparency[0].transparency_Position") 0.0;
+	setAttr ($node + ".transparency[0].transparency_Color") -type double3 1 1 1 ;
+	setAttr ($node + ".transparency[1].transparency_Position") 1.0;
+	setAttr ($node + ".transparency[1].transparency_Color") -type double3 1 1 1 ;
+
+	select -r $selection;
+
+	return $node;
+}
+
+global proc
+VCP_Gradient_UpdateRamps(string $colorControl, string $alphaControl, string $bn_expand1, string $bn_expand2, string $scc1, string $scc2)
+{
+	string $rampNode = VCP_Gradient_CreateRampShader();
+	gradientControl -e -visible true -at ($rampNode + ".color") $colorControl;
+	gradientControl -e -visible true -at ($rampNode + ".transparency") $alphaControl;
+	button -e -visible true -c ("editRampAttribute " + $rampNode + ".color") $bn_expand1;
+	button -e -visible true -c ("editRampAttribute " + $rampNode + ".transparency") $bn_expand2;
+	attrColorSliderGrp -e -visible true $scc1;
+	attrColorSliderGrp -e -visible true $scc2;
+	optionVar -stringValue RH_VCP_GradientRampNode $rampNode;
+}
+
+proc
+VCP_CreateFrame_Gradient_MultiColourContent()
+{
+	frameLayout -label (VCP_uiRes("m_RH_VCP.kGradient_MultiColourFrameTitle"))
+				-labelIndent 4
+				-borderStyle "etchedIn"
+				-collapsable true
+				-collapse true
+				-marginWidth 4
+				-marginHeight 4;
+		columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 4;
+
+			$bn_create = `button -w 60 -label (VCP_uiRes("m_RH_VCP.kGradient_CreateRamp"))`;
+
+			columnLayout -adjustableColumn true -rowSpacing 0;
+				text -label (VCP_uiRes("m_RH_VCP.kGradient_Colour")) -align "left";
+				rowLayout -numberOfColumns 3 -cw3 50 100 15 -adjustableColumn3 1 -rowAttach 2 "bottom" 15 -rowAttach 3 "bottom" 20
+					-columnAttach 1 "both" 2 -columnAttach 2 "both" 2 -columnAttach 3 "both" 2;
+					string $widgetName = `gradientControl
+									-adaptiveScaling false
+									-snc 0
+									-sp 0
+									-refreshOnRelease false
+									-visible false
+									-w 150 -h 60`;
+					$scc= `attrColorSliderGrp -label "" -showButton 0 -visible false -h 26 -cw4 1 25 50 1 -adj 3`;
+					$bn_expand1 = `button -l ">" -width 15 -visible false`;
+				setParent..;
+
+				text -label (VCP_uiRes("m_RH_VCP.kGradient_Transparency")) -align "left";
+				rowLayout -numberOfColumns 3 -cw3 50 100 15 -adjustableColumn3 1 -rowAttach 2 "bottom" 15 -rowAttach 3 "bottom" 20
+					-columnAttach 1 "both" 2 -columnAttach 2 "both" 2 -columnAttach 3 "both" 2;
+				string $widgetName2 = `gradientControl
+									-adaptiveScaling false
+									-snc 0
+									-sp 0
+									-refreshOnRelease false
+									-visible false
+									-w 150 -h 60`;
+					$scc2 = `attrColorSliderGrp -label "" -showButton 0 -visible false -h 26 -cw4 1 25 50 1 -adj 3`;
+					$bn_expand2 = `button -l ">" -width 15 -visible false`;
+				setParent..;
+			setParent..;
+
+		setParent ..;
+	setParent ..;
+
+	
+	button -e -command ("VCP_Gradient_UpdateRamps " + $widgetName + " " + $widgetName2 + " " + $bn_expand1 + " " + $bn_expand2 + " " + $scc + " " + $scc2) $bn_create;
+
+	gradientControl -e -selectedColorControl $scc $widgetName;
+	gradientControl -e -selectedColorControl $scc2 $widgetName2;
+}
+
+
+proc
+VCP_CreateFrame_Gradient_2ColourContent()
+{
+	frameLayout -label (VCP_uiRes("m_RH_VCP.kGradient_2ColourFrameTitle"))
+				-labelIndent 4
+				-borderStyle "etchedIn"
+				-collapsable true
+				-collapse true
+				-marginWidth 4
+				-marginHeight 4;
+		columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 4;
+
+			rowLayout -numberOfColumns 3 -columnAlign 2 "center" -cw3 100 60 100 -adjustableColumn3 2
+				-columnAttach 1 "both" 2 -columnAttach 2 "both" 2 -columnAttach 3 "both" 2
+				-rowAttach 2 "bottom" 12 -manage true;
+				columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 0;
+					text -label (VCP_uiRes("m_RH_VCP.kGradient_StartColour")) -align "left";
+					$CN_color1=`canvas -rgbValue 1 1 1 -width 80 -height 40`;
+					$CN_alpha1=`canvas -rgbValue 1 1 1 -width 80 -height 10`;
+				setParent..;
+				$BN_swap=`button -align "center" -label (VCP_uiRes("m_RH_VCP.kGradient_Swap"))`;
+				columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 0;
+					text -label (VCP_uiRes("m_RH_VCP.kGradient_EndColour")) -align "left";
+					$CN_color2=`canvas -rgbValue 0 0 0 -width 80 -height 40`;
+					$CN_alpha2=`canvas -rgbValue 1 1 1 -width 80 -height 10`;
+				setParent..;
+			setParent..;
+
+		setParent ..;
+	setParent ..;
+
+	// Commands
+	$doCommand = "VCP_ColourCanvasChoose " + $CN_color1 + " " + $CN_alpha1 + ";";
+	$doCommand += "VCP_SetRGBAOptionVarFromCanvas RH_VCP_GradientCol1 " + $CN_color1 + " " + $CN_alpha1;
+	canvas -edit -pressCommand $doCommand $CN_color1;
+
+	$doCommand = "VCP_ColourCanvasChoose " + $CN_color2 + " " + $CN_alpha2 + ";";
+	$doCommand += "VCP_SetRGBAOptionVarFromCanvas RH_VCP_GradientCol2 " + $CN_color2 + " " + $CN_alpha2;
+	canvas -edit -pressCommand $doCommand $CN_color2;
+
+	$doCommand = "VCP_SwapCanvas " + $CN_color1 + " " + $CN_alpha1 + " " + $CN_color2 + " " + $CN_alpha2 + ";";
+	$doCommand += "VCP_SetRGBAOptionVarFromCanvas RH_VCP_GradientCol1 " + $CN_color1 + " " + $CN_alpha1 + ";";
+	$doCommand += "VCP_SetRGBAOptionVarFromCanvas RH_VCP_GradientCol2 " + $CN_color2 + " " + $CN_alpha2 + ";";
+	button -edit -command $doCommand $BN_swap;
+
+	// Settings
+	float $col[] = `optionVar -query "RH_VCP_GradientCol1"`;
+	canvas -edit -rgbValue $col[0] $col[1] $col[2] $CN_color1;
+	canvas -edit -rgbValue $col[3] $col[3] $col[3] $CN_alpha1;
+	float $col[] = `optionVar -query "RH_VCP_GradientCol2"`;
+	canvas -edit -rgbValue $col[0] $col[1] $col[2] $CN_color2;
+	canvas -edit -rgbValue $col[3] $col[3] $col[3] $CN_alpha2;
+}
+
+proc
+VCP_CreateFrame_Gradient_Content()
+{
+	columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 4;
+
+		string $OM_gradientRamp = `optionMenuGrp -cw2 60 150 -adjustableColumn 2 -columnAlign 1 "right" -label (VCP_uiRes("m_RH_VCP.kGradient_Ramp"))`;
+			menuItem -label (VCP_uiRes("m_RH_VCP.kGradient_2Colour")) -ann "2 Colour";
+			menuItem -label (VCP_uiRes("m_RH_VCP.kGradient_MultiColour")) -ann "Multi Colour";
+		separator;	
+
+		VCP_CreateFrame_Gradient_MultiColourContent();
+		VCP_CreateFrame_Gradient_2ColourContent();
+
+		separator;
+
+		string $OM_gradientType = `optionMenuGrp -cw2 60 150 -adjustableColumn 2 -columnAlign 1 "right" -label (VCP_uiRes("m_RH_VCP.kGradient_Type"))`;
+			menuItem -label (VCP_uiRes("m_RH_VCP.kGradient_XAxis")) -ann "X-Axis";
+			menuItem -label (VCP_uiRes("m_RH_VCP.kGradient_YAxis")) -ann "Y-Axis";
+			menuItem -label (VCP_uiRes("m_RH_VCP.kGradient_ZAxis")) -ann "Z-Axis";
+			menuItem -label (VCP_uiRes("m_RH_VCP.kGradient_Spherical")) -ann "Spherical";
+		separator;
+
+		VCP_CreateFrame_Gradient_Sphere;
+		VCP_CreateFrame_Gradient_Linear;
+
+		separator;
+
+		string $OM_repeatMode = `optionMenuGrp -cw2 60 150 -adjustableColumn 2 -columnAlign 1 "right" -label (VCP_uiRes("m_RH_VCP.kGradient_Repeat"))`;
+			menuItem -label (VCP_uiRes("m_RH_VCP.kGradient_Clamp")) -ann "Clamp";
+			menuItem -label (VCP_uiRes("m_RH_VCP.kGradient_Wrap")) -ann "Wrap";
+			menuItem -label (VCP_uiRes("m_RH_VCP.kGradient_Mirror")) -ann "Mirror";
+		$SL_repeats=`floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kGradient_Repeats")) -field true  -cw3 60 40 50 -cc "" -pre 2 -v 1 -min 0 -max 100 -adjustableColumn 3`;
+		$SL_offset=`floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kGradient_Offset")) -field true  -cw3 60 40 50 -cc "" -pre 2 -v 0 -min -100 -max 100 -adjustableColumn 3`;
+
+
+		rowLayout -numberOfColumns 2 -cw2 60 60 -adjustableColumn3 2;
+			RH_VCP_BlankSeparator();
+			$CB_reverse=`checkBox -label (VCP_uiRes("m_RH_VCP.kGradient_ReverseDirection")) -align "left" -value false`;
+		setParent ..;
+
+		separator;
+		rowLayout -numberOfColumns 2 -cw2 150 100 -adjustableColumn2 2 -columnAttach 1 "both" 2 -columnAttach 2 "both" 2;
+			string $OM_blendMode = `optionMenuGrp -cw2 60 150 -adjustableColumn 2 -columnAlign 1 "right" -label (VCP_uiRes("m_RH_VCP.kGradient_Blending"))`;
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_Replace")) -ann "Replace";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_Add")) -ann "Add";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_Subtract")) -ann "Subtract";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_Multiply")) -ann "Multiply";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_Difference")) -ann "Difference";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_Screen")) -ann "Screen";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_Overlay")) -ann "Overlay";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_LightenOnly")) -ann "Lighten Only";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_DarkenOnly")) -ann "Darken Only";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_Dodge")) -ann "Dodge";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_Burn")) -ann "Burn";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_HueReplace")) -ann "Hue Replace";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_SaturationReplace")) -ann "Saturation Replace";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_ColourReplace")) -ann "Colour Replace";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_ValueReplace")) -ann "Value Replace";
+			$SL_blend=`floatSliderGrp -l "" -field true -el "%" -cw4 1 30 1 20 -pre 0 -v 100 -min 0 -max 100 -adjustableColumn 3 `;
+		setParent ..;
+		separator;
+
+		/*
+		columnLayout;
+			text -label "Apply to:" -align "left";
+			radioCollection;
+			rowLayout -numberOfColumns 2;
+				$rbX = `radioButton -label "Vertices"  -select -enable false`;
+				$rbY = `radioButton -label "Vertex-Faces" -enable false`;
+			setParent ..;
+		setParent ..;*/
+
+		//separator;
+
+		$SL_tint=`floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kGradient_Apply")) -field true -el "%" -cw4 60 30 1 20 -pre 0 -v 0 -min 0 -max 100 -adjustableColumn 3 `;
+		$BN_apply = `button -h 30 -label (VCP_uiRes("m_RH_VCP.kGradient_Apply"))`;
+
+	setParent ..;
+
+
+	// Commands
+	{
+		VCP_SetupGradientTintSlider($SL_tint);
+
+		checkBox -edit -changeCommand ("VCP_SetVarFromCheckbox " + $CB_reverse + " RH_VCP_GradientReverse") $CB_reverse;
+		floatSliderGrp -edit -changeCommand ("VCP_SetVarFromSliderGroup " + $SL_offset + " RH_VCP_GradientOffset") $SL_offset;
+		floatSliderGrp -edit -changeCommand ("VCP_SetVarFromSliderGroup " + $SL_repeats + " RH_VCP_GradientRepeats") $SL_repeats;
+		floatSliderGrp -edit -changeCommand ("VCP_SetVarFromSliderGroup " + $SL_blend + " RH_VCP_Gradient_BlendAmount") $SL_blend;
+		optionMenuGrp -edit -changeCommand ("VCP_SetVarFromOptionMenuGrp_ByAnnotation " + $OM_blendMode + " RH_VCP_Gradient_BlendMode") $OM_blendMode;
+		optionMenuGrp -edit -changeCommand ("VCP_SetVarFromOptionMenuGrp_ByAnnotation " + $OM_repeatMode + " RH_VCP_GradientRepeat") $OM_repeatMode;
+		optionMenuGrp -edit -changeCommand ("VCP_SetVarFromOptionMenuGrp_ByAnnotation " + $OM_gradientType + " RH_VCP_GradientType") $OM_gradientType;
+		optionMenuGrp -edit -changeCommand ("VCP_SetVarFromOptionMenuGrp_ByAnnotation " + $OM_gradientRamp + " RH_VCP_GradientRamp") $OM_gradientRamp;
+
+		$doCommand = "VCP_BuildGradientCommand";
+		button -edit -command $doCommand $BN_apply;
+	}
+
+	// Settings
+	{
+		if (`optionVar -query RH_VCP_GradientReverse`)
+			checkBox -edit -value true $CB_reverse;
+
+		floatSliderGrp -edit -value `optionVar -query RH_VCP_GradientOffset` $SL_offset;
+		floatSliderGrp -edit -value `optionVar -query RH_VCP_GradientRepeats` $SL_repeats;
+		floatSliderGrp -edit -value `optionVar -query RH_VCP_Gradient_BlendAmount` $SL_blend;
+		RH_SetOptionMenuGrpValue_ByAnnotation($OM_repeatMode, `optionVar -query RH_VCP_GradientRepeat`);
+		RH_SetOptionMenuGrpValue_ByAnnotation($OM_gradientType, `optionVar -query RH_VCP_GradientType`);
+		RH_SetOptionMenuGrpValue_ByAnnotation($OM_blendMode, `optionVar -query RH_VCP_Gradient_BlendMode`);
+		RH_SetOptionMenuGrpValue_ByAnnotation($OM_gradientRamp, `optionVar -query RH_VCP_GradientRamp`);
+	}
+}
+
+global proc 
+VCP_CreateFrame_Gradients(int $hasFrame)
+{
+	//global float $paint[];
+
+	if ($hasFrame)
+	{
+		int $frameCollapse = `optionVar -query "RH_VCP_FrameApplyGradient"`;
+		$frame = `frameLayout -label (VCP_uiRes("m_RH_VCP.kGradient_FrameTitle"))
+					-labelIndent 4
+					-borderStyle "etchedIn"
+					-collapsable true
+					-collapse $frameCollapse
+					-marginWidth 4
+					-marginHeight 4`;
+			VCP_CreateFrame_Gradient_Content();
+		setParent ..;
+		frameLayout	-e -collapseCommand "optionVar -intValue RH_VCP_FrameApplyGradient 1" $frame;
+		frameLayout	-e -expandCommand "optionVar -intValue RH_VCP_FrameApplyGradient 0" $frame;
+	}
+	else
+	{
+		$frame = `frameLayout
+					-labelVisible false
+					-borderStyle "etchedIn"
+					-collapsable false
+					-marginWidth 4
+					-marginHeight 4`;
+			VCP_CreateFrame_Gradient_Content();
+		setParent ..;
+	}
+}
+
+/*
+global
+proc CreateFrame_Gradient_Axis()
+{
+	global float $paint[];
+
+	frameLayout -label "Axis-Aligned Gradient"
+				-labelIndent 4
+				-borderStyle "etchedIn"
+				-collapsable true
+				-marginWidth 4
+				-marginHeight 4;
+		columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 4;
+
+			text -label "Axis:" -align "left";
+			radioCollection;
+			rowLayout -numberOfColumns 3;
+				$rbX = `radioButton -label "X"`;
+				$rbY = `radioButton -label "Y" -select`;
+				$rbZ = `radioButton -label "Z"`;
+			setParent ..;
+
+			RH_VCP_BlankSeparator();
+
+			$BN_apply = `button -h 40 -label "Apply"`;
+
+		setParent ..;
+	setParent ..;
+
+	// Commands
+	$doCommand = "BuildGradientCommand 0";
+	button -edit -command $doCommand $BN_apply;
+
+	radioButton -edit -onCommand "optionVar -stringValue RH_VCP_GradientAxis X" $rbX;
+	radioButton -edit -onCommand "optionVar -stringValue RH_VCP_GradientAxis Y" $rbY;
+	radioButton -edit -onCommand "optionVar -stringValue RH_VCP_GradientAxis Z" $rbZ;
+
+	// Settings
+	if (`optionVar -query RH_VCP_GradientAxis` == "X")
+		radioButton -edit -select $rbX;
+	if (`optionVar -query RH_VCP_GradientAxis` == "Y")
+		radioButton -edit -select $rbY;
+	if (`optionVar -query RH_VCP_GradientAxis` == "Z")
+		radioButton -edit -select $rbZ;
+}*/
+
+
+global proc 
+VCP_SetRGBAOptionVarFromCanvas(string $name, string $rgbCanvas, string $alphaCanvas)
+{
+	float $colorTmp[] = `canvas -query -rgbValue $rgbCanvas`;
+	float $alphaTmp[] = `canvas -query -rgbValue $alphaCanvas`;
+
+	optionVar -floatValue $name $colorTmp[0];
+	optionVar -floatValueAppend $name $colorTmp[1];
+	optionVar -floatValueAppend $name $colorTmp[2];
+	optionVar -floatValueAppend $name $alphaTmp[0];
+}
+
+global proc
+VCP_BuildGradientCommand()
+{
+	string $command = "RH_VertexPolyColour -op 402 ";
+
+	if (`optionVar -query RH_VCP_NoUndo`)
+		$command += " -nun ";
+
+	int $forceComponent = `optionVar -query RH_VCP_ComponentOverride`;
+	if ($forceComponent > 1)
+	{
+		if ($forceComponent == 2)
+			$command += " -forceComponent 1 ";
+		if ($forceComponent == 3)
+			$command += " -forceComponent 2 ";
+	}
+
+	string $gradRamp = `optionVar -query "RH_VCP_GradientRamp"`;
+	switch ($gradRamp)
+	{
+		case "Multi Colour":
+			string $gradNode = `optionVar -query "RH_VCP_GradientRampNode"`;
+			if (size($gradNode)>0)
+			{
+				$command += " -gradientRampNode " + $gradNode + " ";
+			}
+			else
+			{
+				error "No Multi Colour gradient created";
+				return;
+			}
+			break;
+		default:
+			break;
+	}
+
+	string $gradType = `optionVar -query "RH_VCP_GradientType"`;
+	switch ($gradType)
+	{
+		case "X-Axis":
+		$command += " -gradientType X ";
+		break;
+		case "Y-Axis":
+		$command += " -gradientType Y ";
+		break;
+		case "Z-Axis":
+		$command += " -gradientType Z ";
+		break;
+		case "Spherical":
+		$command += " -gradientType Spherical ";
+		break;
+	}
+
+	if ($gradType == "Spherical")
+	{
+		if (`optionVar -query RH_VCP_GradientOverrideCenter`)
+		{
+			$command += " -gradientOverrideCenter";
+			float $startpos[] = `optionVar -query RH_VCP_GradientStartPos`;
+			$command += " -gradientStartPos " + $startpos[0] + " " + $startpos[1] + " " + $startpos[2];
+		}
+
+		if (`optionVar -query RH_VCP_GradientOverrideRadius`)
+		{
+			$command += " -gradientOverrideRadius";
+			float $radius = `optionVar -query RH_VCP_GradientRadius`;
+			$command += " -gradientRadius " + $radius;
+		}
+	}
+	else
+	{
+		if (`optionVar -query RH_VCP_GradientUseWorldBounds`)
+		{
+			float $worldBoundsMin[] = `optionVar -query RH_VCP_GradientWorldBoundsMin`;
+			$command += " -gradientWorldBoundsMin " + $worldBoundsMin[0] + " " + $worldBoundsMin[1] + " " + $worldBoundsMin[2];
+
+			float $worldBoundsMax[] = `optionVar -query RH_VCP_GradientWorldBoundsMax`;
+			$command += " -gradientWorldBoundsMax " + $worldBoundsMax[0] + " " + $worldBoundsMax[1] + " " + $worldBoundsMax[2];
+		}
+	}
+
+	float $rgba1[] = `optionVar -query "RH_VCP_GradientCol1"`;
+	float $rgba2[] = `optionVar -query "RH_VCP_GradientCol2"`;
+	$command += " -gradCol1 " + $rgba1[0] + " " + $rgba1[1] + " " + $rgba1[2] + " " + $rgba1[3];
+	$command += " -gradCol2 " + $rgba2[0] + " " + $rgba2[1] + " " + $rgba2[2] + " " + $rgba2[3];
+
+	int $reverse = `optionVar -query RH_VCP_GradientReverse`;
+	if ($reverse != 0)
+		$command += " -gradientReverse ";
+
+	string $repeatMode = `optionVar -query RH_VCP_GradientRepeat`;
+	$command += " -gradientRepeat " + $repeatMode;
+
+	float $repeats = `optionVar -query RH_VCP_GradientRepeats`;
+	$command += " -gradientRepeats " + $repeats;
+
+	float $offset = `optionVar -query RH_VCP_GradientOffset`;
+	$command += " -gradientOffset " + $offset;
+
+	float $blendAmount = `optionVar -query "RH_VCP_Gradient_BlendAmount"` * 0.01;
+	if ($blendAmount != 0.0)
+	{
+		string $blendMode = `optionVar -query "RH_VCP_Gradient_BlendMode"`;
+		
+		$command += " -blend " + $blendAmount;
+		$command += " -blendMode \"" + $blendMode + "\"";
+	}
+
+	$command += " -channelMask " + `optionVar -q RH_VCP_ChannelMask` + " ";
+	//print $command;
+	eval $command;
+}
+
+global proc 
+VCP_ColourCanvasChoose(string $rgbCanvas, string $alphaCanvas)
+{
+	float $colorTmp[] = `canvas -query -rgbValue $rgbCanvas`;
+	float $alphaTmp[] = `canvas -query -rgbValue $alphaCanvas`;
+	colorEditor -rgbValue $colorTmp[0] $colorTmp[1] $colorTmp[2] -alpha $alphaTmp[0];;
+
+	if (`colorEditor -query -result`)
+	{
+		float $rgb[] = `colorEditor -query -rgbValue`;
+		float $alpha = `colorEditor -query -alpha`;
+
+		canvas -edit -rgbValue $rgb[0] $rgb[1] $rgb[2] $rgbCanvas;
+		canvas -edit -rgbValue $alpha $alpha $alpha $alphaCanvas;
+	}
+}
+
+global proc
+VCP_SwapCanvas(string $rgbCanvas1, string $alphaCanvas1, string $rgbCanvas2, string $alphaCanvas2)
+{
+	float $colorTmp1[] = `canvas -query -rgbValue $rgbCanvas1`;
+	float $alphaTmp1[] = `canvas -query -rgbValue $alphaCanvas1`;
+	float $colorTmp2[] = `canvas -query -rgbValue $rgbCanvas2`;
+	float $alphaTmp2[] = `canvas -query -rgbValue $alphaCanvas2`;
+	canvas -edit -rgbValue $colorTmp1[0] $colorTmp1[1] $colorTmp1[2] $rgbCanvas2;
+	canvas -edit -rgbValue $alphaTmp1[0] $alphaTmp1[0] $alphaTmp1[0] $alphaCanvas2;
+	canvas -edit -rgbValue $colorTmp2[0] $colorTmp2[1] $colorTmp2[2] $rgbCanvas1;
+	canvas -edit -rgbValue $alphaTmp2[0] $alphaTmp2[0] $alphaTmp2[0] $alphaCanvas1;
+}
+
+global proc string 
+VCP_CreateTab_Gradients()
+{
+	string $layout = `scrollLayout -horizontalScrollBarThickness 0 -childResizable true`;
+        columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 0 -columnAttach "both" 0;
+
+			VCP_CreateFrame_Gradients(0);
+	
+		setParent ..;
+	setParent ..;
+
+	return $layout;
+}

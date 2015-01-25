@@ -1,0 +1,614 @@
+//
+// Vertex Chameleon Maya Plugin Source Code
+// Copyright (C) 2007-2014 RenderHeads Ltd.
+//
+// This source is available for distribution and/or modification
+// only under the terms of the MIT license.  All rights reserved.
+//
+// The source is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// FITNESS FOR A PARTICULAR PURPOSE. See the MIT license
+// for more details.
+//
+
+proc
+VCP_Swatch_AddSwatchButton(string $swatchName, int $colorIndex, float $r, float $g, float $b, float $a)
+{
+	columnLayout -w 20 -h 20;
+		$CN_color=`canvas -rgbValue $r $g $b -width 20 -height 15`;
+		$CN_alpha=`canvas -rgbValue $a $a $a -width 20 -height 5`;
+	setParent..;
+
+	canvas -edit -pressCommand ("VCP_SetRGBFromCanvas " + $CN_color + "; if (`optionVar -q RH_Col_AutoApply`) { VCP_ApplyColourApply(7); };") $CN_color;
+	canvas -edit -pressCommand ("VCP_SetAlphaFromCanvas " + $CN_alpha + "; if (`optionVar -q RH_Col_AutoApply`) { VCP_ApplyColourApply(7); };") $CN_alpha;
+    popupMenu -button 3
+        -parent $CN_color
+        -postMenuCommand ("VCP_Swatch_SetCanvasFromRGB " + $CN_color + " " + $swatchName + " " + $colorIndex);
+    popupMenu -button 3
+        -parent $CN_alpha
+        -postMenuCommand ("VCP_Swatch_SetCanvasFromAlpha " + $CN_alpha + " " + $swatchName + " " + $colorIndex);
+}
+
+global proc
+VCP_Swatch_SetCanvasFromRGB(string $canvasName, string $swatchName, int $colorIndex)
+{
+	global float $VCP_Apply_RGBA[];
+
+	canvas -edit -rgbValue $VCP_Apply_RGBA[0] $VCP_Apply_RGBA[1] $VCP_Apply_RGBA[2] $canvasName;
+
+	// Update optionVar
+	string $optionName = ("RH_VCP_Swatch_" + $swatchName);
+	float $colors[] = `optionVar -q $optionName`;
+	int $numColors = size($colors) / 4;
+
+	$colors[$colorIndex*4+0] = $VCP_Apply_RGBA[0];
+	$colors[$colorIndex*4+1] = $VCP_Apply_RGBA[1];
+	$colors[$colorIndex*4+2] = $VCP_Apply_RGBA[2];
+
+	optionVar -clearArray $optionName;
+	for ($i=0; $i<size($colors); $i++)
+	{
+		optionVar -floatValueAppend $optionName $colors[$i];
+	}
+}
+
+global proc 
+VCP_Swatch_SetCanvasFromAlpha(string $canvasName, string $swatchName, int $colorIndex)
+{
+	global float $VCP_Apply_RGBA[];
+
+	canvas -edit -rgbValue $VCP_Apply_RGBA[3] $VCP_Apply_RGBA[3] $VCP_Apply_RGBA[3] $canvasName;
+
+	// Update optionVar
+	string $optionName = ("RH_VCP_Swatch_" + $swatchName);
+	float $colors[] = `optionVar -q $optionName`;
+	int $numColors = size($colors) / 4;
+
+	$colors[$colorIndex*4+3] = $VCP_Apply_RGBA[3];
+
+	optionVar -clearArray $optionName;
+	for ($i=0; $i<size($colors); $i++)
+	{
+		optionVar -floatValueAppend $optionName $colors[$i];
+	}
+}
+
+global proc
+VCP_Swatch_FillRandom(string $name)
+{
+	string $optionName = ("RH_VCP_Swatch_" + $name);
+
+	float $colors[] = `optionVar -q $optionName`;
+	int $numColors = size($colors) / 4;
+
+	for ($i=0; $i<$numColors; $i++)
+	{
+		$colors[$i*4+0] = rand(1.0);
+		$colors[$i*4+1] = rand(1.0);
+		$colors[$i*4+2] = rand(1.0);
+		$colors[$i*4+3] = rand(1.0);
+	}
+
+	optionVar -clearArray $optionName;
+	for ($i=0; $i<size($colors); $i++)
+	{
+		optionVar -floatValueAppend $optionName $colors[$i];
+	}
+
+	VCP_Swatch_UpdateSwatchCanvases($name);
+}
+
+global proc
+VCP_Swatch_FillGradient(string $name)
+{
+	string $optionName = ("RH_VCP_Swatch_" + $name);
+
+	float $colors[] = `optionVar -q $optionName`;
+	int $numColors = size($colors) / 4;
+
+	$startR = $colors[0];
+	$startG = $colors[1];
+	$startB = $colors[2];
+	$startA = $colors[3];
+	$targetR = $colors[size($colors)-4+0];
+	$targetG = $colors[size($colors)-4+1];
+	$targetB = $colors[size($colors)-4+2];
+	$targetA = $colors[size($colors)-4+3];
+
+	for ($i=0; $i<$numColors; $i++)
+	{
+		float $t = (float)$i / (float)($numColors-1);
+		$colors[$i*4+0] = $startR + ($targetR - $startR) * $t;
+		$colors[$i*4+1] = $startG + ($targetG - $startG) * $t;
+		$colors[$i*4+2] = $startB + ($targetB - $startB) * $t;
+		$colors[$i*4+3] = $startA + ($targetA - $startA) * $t;
+	}
+
+	optionVar -clearArray $optionName;
+	for ($i=0; $i<size($colors); $i++)
+	{
+		optionVar -floatValueAppend $optionName $colors[$i];
+	}
+
+	VCP_Swatch_UpdateSwatchCanvases($name);
+}
+
+global proc
+VCP_Swatch_UpdateSwatchCanvases(string $name)
+{
+	string $optionName = ("RH_VCP_Swatch_" + $name);
+	float $colors[] = `optionVar -q $optionName`;
+	int $numColors = size($colors) / 4;
+
+	string $canvasColumns[] = `rowLayout -q -childArray ("RH_VCP_Swatch_CanvasParent_" + $name)`;
+	if (size($canvasColumns)>0)
+	{
+		for ($i=0; $i<$numColors; $i++)
+		{
+			string $canvases[] = `columnLayout -q -childArray $canvasColumns[$i]`;
+			canvas -e -backgroundColor $colors[$i*4+0] $colors[$i*4+1] $colors[$i*4+2] $canvases[0];
+			canvas -e -backgroundColor $colors[$i*4+3] $colors[$i*4+3] $colors[$i*4+3] $canvases[1];
+		}
+	}
+}
+
+proc int
+VCP_Swatch_SwatchExists(string $name)
+{
+	string $swatches[] = `optionVar -q "RH_VCP_SwatchList"`;
+	string $optionName = ("RH_VCP_Swatch_" + $name);
+	if (`optionVar -exists $optionName` || stringArrayContains($name, $swatches)>0)
+	{
+		return true;
+	}
+	return false;
+}
+
+global proc int
+VCP_Swatch_RenameSwatch(string $name, string $newName)
+{
+	// Remove spaces and weird characters
+	$newName = strip($newName);
+	$newName = substituteAllString($newName, "\r", "");
+	$newName = substituteAllString($newName, "\n", "");
+	$newName = substituteAllString($newName, " ", "");
+
+	if ($newName == $name)
+	{
+		return false;
+	}
+
+	// Check name doesn't already exist
+	if (VCP_Swatch_SwatchExists($newName))
+	{
+		string $errorMsg;
+		if (`exists format`)
+			$errorMsg = `format -stringArg $newName (VCP_uiRes("m_RH_VCP.kColSwatch_AlreadyExists"))`;
+		else
+		{
+			$errorMsg = ((VCP_uiRes("kColSwatch_AlreadyExists_Split1")) + " '" + $newName + "' " + VCP_uiRes("kColSwatch_AlreadyExists_Split2"));
+		}
+		$errorMsg += " " + (VCP_uiRes("m_RH_VCP.kColSwatch_RemoveOrRename"));
+
+		confirmDialog -title (VCP_uiRes("m_RH_VCP.kColSwatch_Error"))
+					-message $errorMsg
+					-button "OK";
+
+		return false;
+	}
+
+	// Rename in list
+	string $swatches[] = `optionVar -q "RH_VCP_SwatchList"`;
+	for ($i=0; $i<size($swatches); $i++)
+	{
+		if ($swatches[$i] == $name)
+		{
+			$swatches[$i] = $newName;
+
+			string $optionNameOld = ("RH_VCP_Swatch_" + $name);
+			string $optionNameNew = ("RH_VCP_Swatch_" + $newName);
+
+			// create new optionvar
+			float $colors[] = `optionVar -q $optionNameOld`;
+			optionVar -clearArray $optionNameNew;
+			for ($i=0; $i<size($colors); $i++)
+			{
+				optionVar -floatValueAppend $optionNameNew $colors[$i];
+			}
+
+			// delete old optionvar
+			optionVar -clearArray $optionNameOld;
+			optionVar -remove $optionNameOld;
+			break;
+		}
+	}
+
+	// rebuild swatchlist optionVar
+	optionVar -clearArray "RH_VCP_SwatchList";
+	for ($i=0; $i<size($swatches); $i++)
+	{
+		optionVar -stringValueAppend "RH_VCP_SwatchList" $swatches[$i];
+	}
+
+	VCP_Swatch_UpdateUI();
+
+	return true;
+}
+
+global proc
+VCP_Swatch_CreateSwatch(string $name, float $colors[])
+{
+	optionVar -stringValueAppend "RH_VCP_SwatchList" $name;
+	
+	string $optionName = ("RH_VCP_Swatch_" + $name);
+
+	optionVar -clearArray $optionName;
+	for ($i=0; $i<size($colors); $i++)
+	{
+		optionVar -floatValueAppend $optionName $colors[$i];
+	}
+
+	VCP_Swatch_UpdateUI();
+}
+
+proc string
+VCP_Swatch_FindUnqiueName(string $prefix)
+{
+	// Find a unique swatch name
+	string $newName = $prefix;
+	if (`optionVar -exists "RH_VCP_SwatchList"`)
+	{
+		string $swatches[] = `optionVar -q "RH_VCP_SwatchList"`;
+		int $index = 0;
+		while (stringArrayContains($newName, $swatches)>0)
+		{
+			$newName = $prefix + $index;
+			$index++;
+		}
+	}
+	return $newName;
+}
+
+global proc
+VCP_Swatch_CreateNew()
+{
+	string $newName = VCP_Swatch_FindUnqiueName("untitled");
+	
+	optionVar -stringValueAppend "RH_VCP_SwatchList" $newName;
+
+	int $numColors = 12;
+	float $colors[];
+	for ($i=0; $i<$numColors; $i++)
+	{
+		float $c = (float)$i / (float)($numColors-1);
+		$colors[$i*4+0] = $c;
+		$colors[$i*4+1] = $c;
+		$colors[$i*4+2] = $c;
+		$colors[$i*4+3] = 1.0;
+	}
+	VCP_Swatch_CreateSwatch($newName, $colors);
+	
+
+	VCP_Swatch_UpdateUI();
+}
+
+global proc
+VCP_Swatch_CopySwatch(string $name)
+{
+	string $newName = VCP_Swatch_FindUnqiueName($name + "copy");
+
+	optionVar -stringValueAppend "RH_VCP_SwatchList" $newName;
+
+	float $colors[] = `optionVar -q ("RH_VCP_Swatch_" + $name)`;
+	VCP_Swatch_CreateSwatch($newName, $colors);
+
+	VCP_Swatch_UpdateUI();
+}
+
+global proc
+VCP_Swatch_LoadDialog()
+{
+	// NOTE: Older versions of Maya don't support the -mode switch
+	int $version = VCP_GetMayaVersionNumber();
+	if ($version <= 70)
+		$filename = toNativePath(`fileDialog -dm "*.col"`);
+	else
+		$filename = toNativePath(`fileDialog -dm "*.col" -mode 0`);
+
+	if (size($filename) > 0)
+	{
+		string $name;
+		float $colors[];
+		if (`filetest -r $filename`)
+		{
+ 			$fileId=`fopen $filename "r"`;
+
+			//$name = `fread $fileId $name`;
+			$name = `fgetword $fileId`;
+
+			//$numColours=`fread $fileId $numColours` * 4;
+			int $numColours = `fgetword $fileId`;
+			int $numValues = $numColours * 4;
+
+			for ($i=0; $i<$numValues; $i++)
+			{
+				//float $val;
+				//$val = `fread $fileId $val`;
+				//$colors[$i] = $val;
+				$colors[$i] = `fgetword $fileId`;
+			}
+
+ 			fclose $fileId;
+
+			// Test if this swatch already exists
+			if (VCP_Swatch_SwatchExists($name))
+			{
+				string $errorMsg;
+				if (`exists format`)
+					$errorMsg = `format -stringArg $name (VCP_uiRes("m_RH_VCP.kColSwatch_AlreadyExists"))`;
+				else
+				{
+					$errorMsg = ((VCP_uiRes("kColSwatch_AlreadyExists_Split1")) + " '" + $name + "' " + VCP_uiRes("kColSwatch_AlreadyExists_Split2"));
+				}
+				$errorMsg += " " + (VCP_uiRes("m_RH_VCP.kColSwatch_RemoveOrRename2"));
+
+				confirmDialog -title (VCP_uiRes("m_RH_VCP.kColSwatch_Error"))
+							-message $errorMsg
+							-button "OK";
+			}
+			else
+			{
+				VCP_Swatch_CreateSwatch($name, $colors);
+			}
+		}
+	}
+}
+
+proc
+VCP_Swatch_Save(string $filename, string $name, float $colors[])
+{	
+	int $fileId=`fopen $filename "w"`;
+	int $numValues = size($colors);
+	int $numColours = $numValues / 4;
+
+	fprint $fileId $name;
+	fprint $fileId "\n";
+	fprint $fileId $numColours;
+	fprint $fileId "\n";
+
+	for ($i=0; $i<$numColours; $i++) 
+	{
+		string $line = $colors[$i*4+0] + " " + $colors[$i*4+1] + " " + $colors[$i*4+2] + " " + $colors[$i*4+3] + "\n";
+		fprint $fileId $line;
+	}
+	fclose $fileId;
+}
+
+global string $RH_VCP_Swatch_OldSaveFilename;
+
+// NOTE: Older versions of Maya don't support the -mode switch on fileDialog, so we must use this older way of saving
+global proc int 
+VCP_Swatch_OldSave( string $filename, string $fileType )
+{
+	global string $RH_VCP_Swatch_OldSaveFilename;
+
+	$RH_VCP_Swatch_OldSaveFilename = $filename;
+	return 1;
+}
+
+global proc
+VCP_Swatch_SaveSwatch(string $name)
+{
+	global string $RH_VCP_Swatch_OldSaveFilename;
+
+	string $optionName = ("RH_VCP_Swatch_" + $name);
+	if (`optionVar -exists $optionName`)
+	{
+		string $filename;
+		// NOTE: Older versions of Maya don't support the -mode switch
+		int $version = VCP_GetMayaVersionNumber();
+		if ($version <= 70)
+		{
+			fileBrowserDialog -m 1 -dialogStyle 1 -filterList "VC-Swatch *.col,*.col" -ft "VC-Swatch *.col" -fc "VCP_Swatch_OldSave" -an "Save";
+			$filename = $RH_VCP_Swatch_OldSaveFilename;
+		}
+		else
+			$filename = `fileDialog -dm "*.col" -mode 1`;
+
+		if (size($filename) > 0)
+		{
+			float $colors[] = `optionVar -q $optionName`;
+			VCP_Swatch_Save($filename, $name, $colors);
+		}
+	}
+}
+
+global proc
+VCP_Swatch_RenameTextField(string $name, string $tfName)
+{
+	string $newName = `textField -q -text $tfName`;
+	if (!VCP_Swatch_RenameSwatch($name, $newName))
+	{
+		textField -e -text $name $tfName;
+	}
+}
+
+proc
+VCP_Swatch_CreateSwatchRow(string $name)
+{
+	float $colors[] = `optionVar -q ("RH_VCP_Swatch_" + $name)`;
+	int $numColors = (size($colors)/4);
+
+	columnLayout -rowSpacing 4;// -numberOfColumns 2  -adjustableColumn 2;
+		//gridLayout -numberOfColumns 5 -cellWidth 80 -cellHeight 20;
+		rowLayout -numberOfColumns 6 -cw6 80 40 40 40 40 40 -columnAttach6 "both" "both" "both" "both" "both" "both" -cal 1 "left" -cal 2 "center" -cal 3 "center" -cal 4 "center" -cal 5 "center" -cal 6 "center";
+			$TF_name = `textField -w 80 -text $name`;
+			button -w 40 -label (VCP_uiRes("m_RH_VCP.kColSwatch_Delete")) -command ("VCP_Swatch_DeleteSwatch " + $name);
+			button -w 40 -label (VCP_uiRes("m_RH_VCP.kColSwatch_Copy")) -command ("VCP_Swatch_CopySwatch " + $name);
+			button -w 40 -label (VCP_uiRes("m_RH_VCP.kColSwatch_Save")) -command ("VCP_Swatch_SaveSwatch " + $name);
+			button -w 40 -label (VCP_uiRes("m_RH_VCP.kColSwatch_Gradient")) -command ("VCP_Swatch_FillGradient " + $name);
+			button -w 40 -label (VCP_uiRes("m_RH_VCP.kColSwatch_Random")) -command ("VCP_Swatch_FillRandom " + $name);
+		setParent..;
+		$row = `rowLayout -numberOfColumns $numColors ("RH_VCP_Swatch_CanvasParent_" + $name)`;
+			for ($i=0; $i<$numColors; $i++)
+			{
+				VCP_Swatch_AddSwatchButton($name, $i, $colors[$i*4+0], $colors[$i*4+1], $colors[$i*4+2], $colors[$i*4+3]);
+				rowLayout -e -cw ($i+1) 22 -columnAttach ($i+1) "both" 0 $row;
+			}
+		setParent..;
+	setParent..;
+	
+	$cmd = ("VCP_Swatch_RenameTextField " + $name + " " + $TF_name);
+	textField -e -changeCommand $cmd $TF_name;
+}
+
+global proc
+VCP_Swatch_DeleteSwatch(string $name)
+{
+	string $optionName = ("RH_VCP_Swatch_" + $name);
+
+	// Remove optionVar
+	if (`optionVar -exists $optionName`)
+	{
+		optionVar -clearArray $optionName;
+		optionVar -remove $optionName;
+	}
+
+	// Remove from swatch list optionVar
+	string $swatches[] = `optionVar -q "RH_VCP_SwatchList"`;
+	if (stringArrayContains($name, $swatches) > 0)
+	{
+		string $deadSwatches[];
+		$deadSwatches[0] = $name;
+		$swatches = stringArrayRemove($deadSwatches, $swatches);
+
+		// Rebuild optionVar
+		optionVar -clearArray "RH_VCP_SwatchList";
+		for ($swatch in $swatches)
+		{
+			optionVar -stringValueAppend "RH_VCP_SwatchList" $swatch;
+		}
+	}
+
+	VCP_Swatch_UpdateUI();
+}
+
+global proc
+VCP_Swatch_UpdateUI()
+{
+	string $oldParent = `setParent -q`;
+
+	setParent RH_VCP_Swatch_UIParent;
+	string $children[] = `layout -q -childArray RH_VCP_Swatch_UIParent`;
+	for ($child in $children)
+	{
+		deleteUI -layout $child;
+	}
+
+	setParent RH_VCP_Swatch_UIParent;
+
+	VCP_Swatch_CreateUISwatches();
+
+	setParent $oldParent;
+}
+
+global proc
+VCP_Swatch_CreateUISwatches()
+{
+	if (`optionVar -exists "RH_VCP_SwatchList"`)
+	{
+		string $swatches[] = `optionVar -q "RH_VCP_SwatchList"`;
+
+		$swatches = stringArrayRemoveDuplicates($swatches);
+
+		// Remove any swatches that weren't found
+		{
+			string $deadSwatches[];
+			for ($swatch in $swatches)
+			{
+				if (!`optionVar -exists ("RH_VCP_Swatch_" + $swatch)`)
+				{
+					$deadSwatches[size($deadSwatches)] = $swatch;
+				}
+			}
+			if (size($deadSwatches)>0)
+			{
+				$swatches = stringArrayRemove($deadSwatches, $swatches);
+			}
+		}
+
+		// Rebuild optionVar
+		optionVar -clearArray "RH_VCP_SwatchList";
+		for ($swatch in $swatches)
+		{
+			optionVar -stringValueAppend "RH_VCP_SwatchList" $swatch;
+		}
+
+		for ($swatch in $swatches)
+		{
+			frameLayout -label ($swatch)
+				-labelVisible true
+				-labelIndent 4
+				-borderStyle "out"
+				-collapsable true
+				-marginWidth 2
+				-marginHeight 2;
+				VCP_Swatch_CreateSwatchRow($swatch);
+			setParent..;
+		}
+	}
+}
+
+global proc
+VCP_CreateFrameContents_ColourSwatch()
+{
+	$frame = `frameLayout
+				-labelVisible false
+				-borderStyle "etchedIn"
+				-collapsable false
+				-marginWidth 4
+				-marginHeight 4`;
+	string $form = `formLayout -numberOfDivisions 100 -width 320 -height 200`;
+		$sectionTop = `gridLayout -numberOfColumns 2 -cellWidth 50 -cellHeight 20`;
+			button -label (VCP_uiRes("m_RH_VCP.kColSwatch_New")) -command "VCP_Swatch_CreateNew";
+			button -label (VCP_uiRes("m_RH_VCP.kColSwatch_Load")) -command "VCP_Swatch_LoadDialog";
+			//button -label "Save All" -command "VCP_Swatch_SaveDialog";
+			//button -label "Load All" -command "VCP_Swatch_LoadDialog";
+		setParent..;
+		$sectionLayers = `scrollLayout -horizontalScrollBarThickness 0 -childResizable true`;
+				columnLayout -columnAlign "left" -adjustableColumn true -rowSpacing 0 -columnAttach "both" 0 RH_VCP_Swatch_UIParent;
+				VCP_Swatch_CreateUISwatches();
+			setParent..;
+		setParent..;
+		$sectionBot = `columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 4`;
+		setParent..;
+	setParent ..;
+
+	formLayout -edit
+		-attachForm     $sectionTop        "top"    2
+		-attachControl  $sectionLayers     "top"    2  $sectionTop
+		-attachForm     $sectionTop        "left"   2
+		-attachForm     $sectionTop        "right"  2
+		-attachForm     $sectionLayers     "left"   2
+		-attachForm     $sectionLayers     "right"  2
+		-attachForm     $sectionBot        "left"   2
+		-attachForm     $sectionBot        "right"  2
+		-attachForm     $sectionBot        "bottom" 2
+        -attachControl  $sectionLayers     "bottom" 2  $sectionBot
+		$form;
+}
+
+
+global proc string
+VCP_CreateTab_Swatch()
+{
+	string $layout = `scrollLayout -horizontalScrollBarThickness 0 -childResizable true`;
+        columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 0 -columnAttach "both" 0;
+
+		VCP_CreateFrameContents_ColourSwatch;
+		
+		setParent ..;
+	setParent ..;
+
+	return $layout;
+}

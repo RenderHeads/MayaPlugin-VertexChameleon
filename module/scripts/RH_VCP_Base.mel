@@ -1,0 +1,254 @@
+//
+// Vertex Chameleon Maya Plugin Source Code
+// Copyright (C) 2007-2014 RenderHeads Ltd.
+//
+// This source is available for distribution and/or modification
+// only under the terms of the MIT license.  All rights reserved.
+//
+// The source is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// FITNESS FOR A PARTICULAR PURPOSE. See the MIT license
+// for more details.
+//
+
+global proc
+VCP_DisplayString(string $value, string $name)
+{
+	// Older versions of maya do not support to -replace flag
+	if (`exists uiRes`)
+	{
+		displayString -replace -value ($value) $name;
+	}
+	else
+	{
+		if (!`displayString -exists $name`)
+			displayString -value ($value) $name;
+	}
+}
+
+global proc string
+VCP_uiRes( string $lookUpKey )
+{
+	string $result = "Missing";
+
+	// Older versions of Maya do not have the uiRes command
+	if (`exists uiRes`)
+	{
+		if (catch($result = uiRes($lookUpKey)))
+		{
+			warning ("Error: string not found: " + $lookUpKey);
+		}
+	}
+	else
+	{
+		if(!`displayString -exists $lookUpKey`)
+		{
+			warning ("Error: string not found: " + $lookUpKey);
+		}
+		else
+		{
+			$result = `displayString -q -value $lookUpKey`;
+		}
+	}
+
+	return $result;
+}
+
+global proc string
+VCP_GetMayaVersionNumber()
+{
+	string $mayaVersion = `about -version`;
+	
+	if (startsWith($mayaVersion, "2015"))
+	{
+		return "2015";
+	}	
+	if (startsWith($mayaVersion, "2014"))
+	{
+		return "2014";
+	}	
+	if (startsWith($mayaVersion, "2013"))
+	{
+		return "2013";
+	}	
+	if (startsWith($mayaVersion, "2012"))
+	{
+		return "2012";
+	}
+	if (startsWith($mayaVersion, "2011"))
+	{
+		return "2011";
+	}
+	if (startsWith($mayaVersion, "2010"))
+	{
+		return "2010";
+	}
+	if (startsWith($mayaVersion, "2009"))
+	{
+		return "2009";
+	}
+	if (startsWith($mayaVersion, "2008"))
+	{
+		return "2008";
+	}
+	if (startsWith($mayaVersion, "8.5"))
+	{
+		return "85";
+	}
+	if (startsWith($mayaVersion, "8.0"))
+	{
+		return "80";
+	}
+	if (startsWith($mayaVersion, "7.0"))
+	{
+		return "70";
+	}
+	if (startsWith($mayaVersion, "6.5"))
+	{
+		return "65";
+	}
+	if (startsWith($mayaVersion, "6.0"))
+	{
+		return "60";
+	}
+
+	if (`exists format`)
+	{
+		error `format -stringArg $mayaVersion (VCP_uiRes("m_VCPBase.kMayaVersionNotSupported"))`;
+	}
+	else
+	{
+		error ((VCP_uiRes("m_VCPBase.kMayaVersionNotSupportedSplit1")) + " (" + $mayaVersion + ") " + VCP_uiRes("m_VCPBase.kMayaVersionNotSupportedSplit2"));
+	}
+  
+  return "invalid";
+}
+
+
+global proc string
+VCP_GetPluginName(string $productName)
+{
+	string $version = "";
+	
+	string $mayaVersion = `about -version`;
+
+	$version = VCP_GetMayaVersionNumber();
+	if ($version == "invalid")
+		return "invalid";
+
+	// Mac uses universal binaries
+	if (!`about -mac`)
+	{
+		if (endsWith($mayaVersion, "x64"))
+		{
+			$version += "x64";
+		}
+	}
+
+	return $productName + $version;
+}
+
+global proc string
+VCP_GetModulePath(string $productName)
+{
+	string $pluginName = VCP_GetPluginName($productName);
+	string $pluginPath = `pluginInfo -query -path -command $pluginName`;
+
+	string $extension = ".mll";
+	if (!`about -windows`)
+	{
+		$extension = ".so";
+		if (!`about -linux`)
+		{
+			$extension = ".bundle";
+			if (!`about -mac`)
+			{
+				warning (VCP_uiRes("m_VCPBase.kCantDetermineModulePath"));
+			}
+		}
+	}
+	if (!endsWith($pluginPath, $extension))
+	{
+		warning (VCP_uiRes("m_VCPBase.kCantDetermineModulePath"));
+	}
+
+	$pathPrefix = "plug-ins/" + $pluginName + $extension;
+	return startString($pluginPath, size($pluginPath) - size($pathPrefix));
+}
+
+global proc
+VCP_SetVarFromSliderGroup(string $control, string $varName)
+{
+	float $val = `floatSliderGrp -query -value $control`;
+	optionVar -floatValue $varName $val;
+}
+
+global proc
+VCP_SetVarFromFloatFieldGrp(string $control, string $varName)
+{
+	//int $n = `floatFieldGrp -query -numberOfFields $control`;
+	float $values[] = `floatFieldGrp -query -value $control`;
+	//if ($n > 0)
+		optionVar -floatValue $varName $values[0];
+	//if ($n > 1)
+		optionVar -floatValueAppend $varName $values[1];
+	//if ($n > 2)
+		optionVar -floatValueAppend $varName $values[2];
+	//if ($n > 3)
+		optionVar -floatValueAppend $varName $values[3];
+
+	//print $n;
+	//print optionVar -query $varName;
+}
+
+global proc
+VCP_SetVarFromFloatField(string $control, string $varName)
+{
+	float $val = `floatField -query -value $control`;
+	optionVar -floatValue $varName $val;
+}
+
+global proc
+VCP_SetVarFromCheckbox(string $control, string $varName)
+{
+	int $val = `checkBox -query -value $control`;
+	optionVar -intValue $varName $val;
+}
+
+global proc
+VCP_SetVarFromOptionMenuGrp(string $control, string $varName)
+{
+	string $val = `optionMenuGrp -query -value $control`;
+	optionVar -stringValue $varName $val;
+}
+
+global proc float[]
+VCP_GetCenterOfSelectionVertices()
+{
+	$oldSelection = `ls -selection`;
+
+	select -replace `polyListComponentConversion -tv`;
+	$verts = `filterExpand -ex true -sm 31`;
+	if (!size($verts))	
+		error (VCP_uiRes("m_VCPBase.kErrorNoVerticesSelected"));
+
+	float $avg[];
+	$avg[0] = 0.0;
+	$avg[1] = 0.0;
+	$avg[2] = 0.0;
+	for ($vtx in $verts)
+	{
+		$pt = `pointPosition $vtx`;
+		$avg[0] += $pt[0];
+		$avg[1] += $pt[1];
+		$avg[2] += $pt[2];
+	}
+
+	$avg[0] /= size($verts);
+	$avg[1] /= size($verts);
+	$avg[2] /= size($verts);
+
+	select -replace $oldSelection;
+
+	return $avg;
+}

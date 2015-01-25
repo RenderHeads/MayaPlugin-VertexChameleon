@@ -1,0 +1,153 @@
+//
+// Vertex Chameleon Maya Plugin Source Code
+// Copyright (C) 2007-2014 RenderHeads Ltd.
+//
+// This source is available for distribution and/or modification
+// only under the terms of the MIT license.  All rights reserved.
+//
+// The source is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// FITNESS FOR A PARTICULAR PURPOSE. See the MIT license
+// for more details.
+//
+
+global int $VCP_AdjustSliderMoving = 0;
+
+global proc
+VCP_AdjustLevels(int $skipundo)
+{
+	global string $RH_VCP_OldWireDisplay;
+	global int $VCP_AdjustSliderMoving;
+
+	float $inBlack = `floatSliderGrp -query -value RH_VCP_inBlack`;
+	float $inWhite = `floatSliderGrp -query -value RH_VCP_inWhite`;
+	float $inGamma = `floatSliderGrp -query -value RH_VCP_inGamma`;
+	float $outBlack = `floatSliderGrp -query -value RH_VCP_outBlack`;
+	float $outWhite = `floatSliderGrp -query -value RH_VCP_outWhite`;
+
+	if ($inBlack != 0.0 || $inWhite != 1.0 || $inGamma != 1.0 || $outBlack != 0.0 || $outWhite != 1.0)
+	{
+		if ($VCP_AdjustSliderMoving == 0)
+		{
+			VCP_CreateColourStoreForSelection();
+
+			$VCP_AdjustSliderMoving = 1;
+
+			$RH_VCP_OldWireDisplay = `displayPref -q -wsa`;
+			displayPref -wireframeOnShadedActive "none";
+			undoInfo -swf 0;
+		}
+	}
+
+	if ($VCP_AdjustSliderMoving == 1)
+	{
+		string $cmd = "RH_VertexPolyColour -op 304 -nodeSource ";
+		if ($skipundo > 0)
+		{
+			$cmd += " -noUndo ";
+		}
+		if (`optionVar -query RH_VCP_NoUndo`)
+			$cmd += " -nun ";
+
+		int $forceComponent = `optionVar -query RH_VCP_ComponentOverride`;
+		if ($forceComponent > 1)
+		{
+			if ($forceComponent == 2)
+				$cmd += " -forceComponent 1 ";
+			if ($forceComponent == 3)
+				$cmd += " -forceComponent 2 ";
+		}
+
+		$cmd += " -levels " + $inBlack + " " + $inWhite + " " + $inGamma + " " + $outBlack + " " + $outWhite;
+		$cmd += " -channelMask " + `optionVar -q RH_VCP_ChannelMask` + " ";
+		eval($cmd);
+	}
+}
+
+global proc
+VCP_FinAdjustLevels()
+{
+	global string $RH_VCP_OldWireDisplay;
+	global int $VCP_AdjustSliderMoving;
+
+	//constructionHistory -tgl on;
+	undoInfo -swf 1;
+	VCP_AdjustLevels(false);
+
+	VCP_RemoveColourStoreForSelection();
+	
+	floatSliderGrp -edit -value 0.0 RH_VCP_inBlack;
+	floatSliderGrp -edit -value 1.0 RH_VCP_inWhite;
+	floatSliderGrp -edit -value 1.0 RH_VCP_inGamma;
+	floatSliderGrp -edit -value 0.0 RH_VCP_outBlack;
+	floatSliderGrp -edit -value 1.0 RH_VCP_outWhite;
+	
+	$VCP_AdjustSliderMoving = 0;
+	displayPref -wireframeOnShadedActive $RH_VCP_OldWireDisplay;
+}
+
+proc
+VCP_SetupLevelsSlider(string $name)
+{
+	$doCommand = ("VCP_FinAdjustLevels;");
+	floatSliderGrp -edit -changeCommand $doCommand $name;
+	
+	$doCommand = ("VCP_AdjustLevels 1" + ";");
+	floatSliderGrp -edit -dragCommand $doCommand $name;
+}
+
+proc
+VCP_CreateFrame_Levels_Content()
+{
+	columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 4;
+
+		columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 0;
+			floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kLevels_InBlack")) -field true  -cw3 60 40 40 -cc "" -pre 2 -min 0 -max 1 -value 0 -adjustableColumn 3 RH_VCP_inBlack;
+			floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kLevels_InWhite")) -field true  -cw3 60 40 40 -cc "" -pre 2 -min 0 -max 1 -value 1 -adjustableColumn 3 RH_VCP_inWhite;
+			floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kLevels_InGamma")) -field true  -cw3 60 40 40 -cc "" -pre 2 -min 0 -max 8 -value 1 -adjustableColumn 3 RH_VCP_inGamma;
+		setParent ..;
+		separator;
+		columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 0;
+			floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kLevels_OutBlack")) -field true  -cw3 60 40 40 -cc "" -pre 2 -min 0 -max 1 -value 0 -adjustableColumn 3 RH_VCP_outBlack;
+			floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kLevels_OutWhite")) -field true  -cw3 60 40 40 -cc "" -pre 2 -min 0 -max 1 -value 1 -adjustableColumn 3 RH_VCP_outWhite;
+		setParent ..;
+	setParent ..;
+
+	VCP_SetupLevelsSlider("RH_VCP_inBlack");
+	VCP_SetupLevelsSlider("RH_VCP_inWhite");
+	VCP_SetupLevelsSlider("RH_VCP_inGamma");
+	VCP_SetupLevelsSlider("RH_VCP_outBlack");
+	VCP_SetupLevelsSlider("RH_VCP_outWhite");
+}
+
+global proc
+VCP_CreateFrame_Levels(int $hasFrame)
+{
+	if ($hasFrame)
+	{
+		int $frameCollapse = `optionVar -query "RH_VCP_FrameAdjustLevels"`;
+		$frame = `frameLayout -label (VCP_uiRes("m_RH_VCP.kLevels_FrameTitle"))
+					-labelIndent 4
+					-borderStyle "etchedIn"
+					-collapsable true
+					-collapse $frameCollapse
+					-marginWidth 4
+					-marginHeight 4`;
+			VCP_CreateFrame_Levels_Content();
+		setParent ..;
+
+		frameLayout	-e -collapseCommand "optionVar -intValue RH_VCP_FrameAdjustLevels 1" $frame;
+		frameLayout	-e -expandCommand "optionVar -intValue RH_VCP_FrameAdjustLevels 0" $frame;
+	}
+	else
+	{
+		$frame = `frameLayout
+					-labelVisible false
+					-borderStyle "etchedIn"
+					-collapsable false
+					-marginWidth 4
+					-marginHeight 4`;
+			VCP_CreateFrame_Levels_Content();
+		setParent ..;
+	}
+}

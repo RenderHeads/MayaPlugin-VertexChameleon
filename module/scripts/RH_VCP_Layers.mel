@@ -1,0 +1,1123 @@
+//
+// Vertex Chameleon Maya Plugin Source Code
+// Copyright (C) 2007-2014 RenderHeads Ltd.
+//
+// This source is available for distribution and/or modification
+// only under the terms of the MIT license.  All rights reserved.
+//
+// The source is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// FITNESS FOR A PARTICULAR PURPOSE. See the MIT license
+// for more details.
+//
+
+global string $VCP_FINAL_LAYER_NAME = "VCP_MasterComp";
+
+global proc int
+VCP_Layer_HasColorSet(string $name)
+{
+	int $found = false;
+	string $sets[] = `polyColorSet -q -allColorSets`;
+	for ($set in $sets)
+	{
+		if ($set == $name)
+			$found = true;
+	}
+	return $found;
+}
+
+global proc int
+VCP_Layer_HasFinalComp()
+{
+	global string $VCP_FINAL_LAYER_NAME;
+	return VCP_Layer_HasColorSet($VCP_FINAL_LAYER_NAME);
+}
+
+global proc int
+VCP_Layer_MeshNeedsLayers()
+{
+	string $sets[] = `polyColorSet -q -allColorSets`;
+	return ((!`VCP_Layer_HasFinalComp`) && size($sets) > 1);
+}
+
+global proc string
+VCP_Layer_CreateNewLayerColorSet(string $basename)
+{
+	string $newNames[] = `polyColorSet -create -colorSet $basename`;
+	string $name = $newNames[0];
+
+	// Switch to the new colorSet
+	polyColorSet -currentColorSet -colorSet $name;
+	
+	// TODO: select the whole object before painting it, and then restore the selection.  components may be selected.
+	//select VCP_Layers_GetSelectedMesh();
+	// Paint the colorSet grey
+	//polyColorPerVertex -r 0.40 -g 0.40 -b 0.40 -a 1.0 -cdo;
+
+	// Paint the colorSet black
+	//polyColorPerVertex -r 0.0 -g 0.0 -b 0.0 -a 1.0 -cdo;
+
+	// Restore the colorSet
+	VCP_Layers_SwitchViewMode();
+
+	return $name;
+}
+
+global proc string
+VCP_Layer_CopyLayerColorSet(string $basename)
+{
+	string $newNames[] = `polyColorSet -copy -colorSet $basename`;
+
+	string $name = $newNames[0];
+
+	return $name;
+}
+
+global proc
+VCP_Layer_CreateNewLayerAttribs(string $mesh, string $name)
+{
+	// Set this as the active layer
+	string $attrActive = "VCP_Layer_Active";
+	if (!`attributeQuery -node $mesh -exists $attrActive`)
+	{
+		addAttr -longName $attrActive -dataType "string" $mesh;
+	}
+	setAttr -type "string" ($mesh + "." + $attrActive) $name;
+
+	/*// Set this as the active layer
+	string $attrViewMode = "VCP_Layer_ViewMode";
+	if (!`attributeQuery -node $mesh -exists $attrViewMode`)
+	{
+		addAttr -longName $attrViewMode -dataType "string";
+		setAttr -type "string" ($mesh + "." + $attrViewMode) "Final Composite";
+	}*/
+
+	VCP_Layer_CreateDefaultLayerAttribs($mesh, $name);
+}
+
+global proc
+VCP_Layer_CreateDefaultLayerAttribs(string $mesh, string $colorSetName)
+{
+	VCP_Layer_VerifyMeshAttributes($mesh);//, $colorSetName);
+
+	string $layerAttrName = "VCP_Layer_" + $colorSetName;
+	string $attrVisible = ($layerAttrName + "_Visible");
+	string $attrBlendMode = ($layerAttrName + "_BlendMode");
+	string $attrBlendAmount = ($layerAttrName + "_BlendAmount");
+	if (!`attributeQuery -node $mesh -exists $attrVisible`)
+	{
+		addAttr -longName $attrVisible -attributeType "bool" $mesh;
+		setAttr ($mesh + "." + $attrVisible) true;
+	}
+	if (!`attributeQuery -node $mesh -exists $attrBlendMode`)
+	{
+		addAttr -longName $attrBlendMode -dataType "string" $mesh;
+		setAttr ($mesh + "." + $attrBlendMode) -type "string" "Replace";
+	}
+	if (0==size(`getAttr ($mesh + "." + $attrBlendMode)`))
+	{
+		setAttr ($mesh + "." + $attrBlendMode) -type "string" "Replace";
+	}
+	if (!`attributeQuery -node $mesh -exists $attrBlendAmount`)
+	{
+		addAttr -longName $attrBlendAmount -attributeType "float" $mesh;	
+		setAttr ($mesh + "." + $attrBlendAmount) 100.0;
+	}
+}
+
+global proc string
+VCP_Layers_GetSelectedMesh()
+{
+	// TODO: find a better method than this
+	string $mesh = "";
+	string $nodes[] = `ls -selection -objectsOnly`;
+	if (size($nodes) == 1)
+	{
+		$mesh = ($nodes[0]);
+		if (`nodeType $mesh` == "mesh")
+		{
+			$mesh = `firstParentOf $mesh`;
+		}
+	}
+
+	return $mesh;
+}
+
+global proc int
+VCP_Layers_RenameLayer(string $oldname, string $newname)
+{
+	$mesh = VCP_Layers_GetSelectedMesh();
+	if (`size $mesh` == 0)
+		return false;
+
+	// Remove spaces and weird characters
+	$newname = strip($newname);
+	$newname = substituteAllString($newname, "\r", "");
+	$newname = substituteAllString($newname, "\n", "");
+	$newname = substituteAllString($newname, " ", "");
+
+	if ($newname == $oldname)
+	{
+		return false;
+	}
+
+	// Check name doesn't already exist
+	if (VCP_Layer_HasColorSet($newname))
+	{
+		string $errorMsg;
+		if (`exists format`)
+			$errorMsg = `format -stringArg $newname (VCP_uiRes("m_RH_VCP.kLayers_LayerXExists"))`;
+		else
+		{
+			$errorMsg = ((VCP_uiRes("m_RH_VCP.kLayers_LayerXExists_Split1")) + " '" + $newname + "' " + VCP_uiRes("m_RH_VCP.kLayers_LayerXExists_Split2"));
+		}
+		$errorMsg += " " + (VCP_uiRes("m_RH_VCP.kLayers_RemoveRenameLayer"));
+
+		confirmDialog -title (VCP_uiRes("m_RH_VCP.kLayers_Error"))
+					-message $errorMsg
+					-button "OK";
+		return false;
+	}
+
+	polyColorSet -rename -colorSet $oldname -newColorSet $newname;
+
+	// If the old name was the name of the active layer, set the new name
+	string $attrActive = "VCP_Layer_Active";
+	if (`attributeQuery -node $mesh -exists $attrActive`)
+	{
+		if (`getAttr ($mesh + "." + $attrActive)` == $oldname)
+		{
+			setAttr -type "string" ($mesh + "." + $attrActive) $newname;
+		}
+	}
+
+	// Rename the old layer's attributes to the new name
+	string $layerAttrNameNew = "VCP_Layer_" + $newname;
+	string $layerAttrNameOld = "VCP_Layer_" + $oldname;
+	renameAttr ($mesh + "." + $layerAttrNameOld + "_Visible") ($layerAttrNameNew + "_Visible");
+	renameAttr ($mesh + "." + $layerAttrNameOld + "_BlendMode") ($layerAttrNameNew + "_BlendMode");
+	renameAttr ($mesh + "." + $layerAttrNameOld + "_BlendAmount") ($layerAttrNameNew + "_BlendAmount");
+
+	// Rename in layer order
+	{
+		string $layerOrder = `getAttr ($mesh + "." + "VCP_LayerOrder")`;
+		string $layers[] = stringToStringArray($layerOrder, ",");
+		int $i;
+		for ($i = 0; $i < size($layers); $i++)
+		{
+			if ($layers[$i] == $oldname)
+			{
+				$layers[$i] = $newname;
+				break;
+			}
+		}
+		string $layerString = stringArrayToString($layers, ",");
+		setAttr ($mesh + ".VCP_LayerOrder") -type "string" $layerString;
+	}
+
+	// Rebuild the UI so the control commands use the new attributes name
+	evalDeferred("VCP_Layers_UpdateUI();");
+
+	return true;
+}
+
+global proc 
+VCP_Layers_Rename(string $oldname, string $TF_name)
+{
+	string $newName = `textField -q -text $TF_name`;
+	if (!VCP_Layers_RenameLayer($oldname, $newName))
+	{
+		textField -e -text $oldname $TF_name;
+	}
+}
+
+global proc
+VCP_Layer_VerifyMeshAttributes(string $mesh)
+{
+	global string $VCP_FINAL_LAYER_NAME;
+
+	// Check we have a final comp layer
+	if (`VCP_Layer_MeshNeedsLayers`)
+	{
+		VCP_Layer_CreateNewLayerColorSet($VCP_FINAL_LAYER_NAME);
+	}
+
+	// NOTE: VCP_LayerList is deprecated, has been replaced with VCP_LayerOrder
+	/*if (!`attributeQuery -node $mesh -exists "VCP_LayerList"`)
+	{
+		addAttr -longName "VCP_LayerList" -dt stringArray $mesh;
+	}*/
+
+	if (!`attributeQuery -node $mesh -exists "VCP_LayerOrder"`)
+	{
+		addAttr -longName "VCP_LayerOrder" -dt "string" $mesh;
+
+		string $sets[] = `polyColorSet -q -allColorSets`;
+		string $layerOrder;
+		for ($colorSetName in $sets)
+		{
+			if ($colorSetName != $VCP_FINAL_LAYER_NAME)
+			{
+				$layerOrder += $colorSetName + ",";
+			}
+		}
+
+		setAttr ($mesh + ".VCP_LayerOrder") -type "string" $layerOrder;
+	}
+
+	string $attrActive = "VCP_Layer_Active";
+	if (!`attributeQuery -node $mesh -exists $attrActive`)
+	{
+		addAttr -longName $attrActive -dataType "string" $mesh;
+	}
+}
+
+global proc
+VCP_Layer_TouchMesh(string $mesh, string $colorSetName)
+{
+	VCP_Layer_VerifyMeshAttributes($mesh);
+
+	// Set this as the active layer
+	setAttr -type "string" ($mesh + ".VCP_Layer_Active") $colorSetName;
+}
+
+global proc
+VCP_Layer_CreateLayer()
+{
+	$mesh = VCP_Layers_GetSelectedMesh();
+	if (`size $mesh` == 0)
+		return;
+
+	// Create new layer
+	string $layerName = `VCP_Layer_CreateNewLayerColorSet("VCP_Layer")`;
+	VCP_Layer_CreateNewLayerAttribs($mesh, $layerName);
+
+	VCP_Layers_UpdateUI();
+	VCP_Layers_UpdateMesh($mesh);
+
+	VCP_Layers_SwitchViewMode();
+}
+
+global proc
+VCP_Layer_DuplicateLayer()
+{
+	$mesh = VCP_Layers_GetSelectedMesh();
+	if (`size $mesh` == 0)
+		return;
+	
+	// Copy active layer into new layer
+	string $attrActive = "VCP_Layer_Active";
+	if (`attributeQuery -node $mesh -exists $attrActive`)
+	{
+		$activeLayerName = `getAttr ($mesh + "." + $attrActive)`;
+		string $layerName = `VCP_Layer_CopyLayerColorSet($activeLayerName)`;
+		VCP_Layer_CreateNewLayerAttribs($mesh, $layerName);
+	}		
+
+	VCP_Layers_UpdateUI();
+	VCP_Layers_UpdateMesh($mesh);
+	VCP_Layers_SwitchViewMode();
+}
+
+global proc
+VCP_Layer_MoveUpDown(int $up)
+{
+	$mesh = VCP_Layers_GetSelectedMesh();
+	if (`size $mesh` == 0)
+		return;
+	
+	// Get the active layer name
+	string $attrActive = "VCP_Layer_Active";
+	if (!`attributeQuery -node $mesh -exists $attrActive`)
+		return;
+	$activeLayerName = `getAttr ($mesh + "." + $attrActive)`;
+	if (!`attributeQuery -node $mesh -exists "VCP_LayerOrder"`)
+		return;
+
+	// Find the index of the layer
+	int $oldIndex = -1;
+	string $layerOrder = `getAttr ($mesh + "." + "VCP_LayerOrder")`;
+	string $layers[] = stringToStringArray($layerOrder, ",");
+	int $index = 0;
+	for ($layer in $layers)
+	{
+		if ($layer == $activeLayerName)
+		{
+			$oldIndex = $index;
+			break;
+		}
+		$index++;
+	}
+
+	// Check the range works
+	int $numLayers = size($layers);
+	int $newIndex = $oldIndex;
+	if ($up)
+		$newIndex++;
+	else
+		$newIndex--;
+
+	if ($newIndex < 0 || $newIndex >= $numLayers)
+		return;
+
+	// Swap layers
+	string $swapLayer = $layers[$newIndex];
+	$layers[$newIndex] = $activeLayerName;
+	$layers[$oldIndex] = $swapLayer;
+
+	// Write new order to attribute
+	string $layerString = stringArrayToString($layers, ",");
+	setAttr ($mesh + ".VCP_LayerOrder") -type "string" $layerString;
+
+	// Update the UI and mesh rendering
+	VCP_Layers_UpdateUI();
+	VCP_Layers_UpdateMesh($mesh);
+	VCP_Layers_SwitchViewMode();
+}
+
+global proc string
+RH_VCP_CreateRandomNumberString(int $length)
+{
+	string $s = (int)`rand 10`;
+	for ($i = 0; $i < $length; $i++)
+	{
+		$s += (int)`rand 10`;
+	}
+
+	return $s;
+}
+
+proc
+VCP_Layer_DeleteColorSet(string $mesh, string $colorSetName)
+{
+	// For older versions of maya, first rename to to some unique name
+	// as Maya has a bug where if you rename a colorset to the name of a deleted 
+	// one, it deletes all colorsets!
+	string $newName = $colorSetName + RH_VCP_CreateRandomNumberString(16);
+	polyColorSet -rename -colorSet $colorSetName -newColorSet $newName;
+
+	// If the rename failed (it can in older versions <=2008 of Maya for some unknown reason) then try to use the original name
+	if (!VCP_Layer_HasColorSet($newName))
+		$newName = $colorSetName;
+
+	int $mayaVersion = VCP_GetMayaVersionNumber();
+	int $multiInstanceSupported = false;
+	if ($mayaVersion > 70)
+		$multiInstanceSupported = true;
+
+	// find its attribute on the mesh
+	int $foundIndex = -1;
+	if ($multiInstanceSupported)
+	{
+		int $setIndices[] = `getAttr -mi ($mesh + ".clst")`;
+		int $foundCount = 0;
+		for($setIndex in $setIndices)
+		{
+			string $setName = getAttr ($mesh + ".clst[" + $setIndex + "].clsn");
+			if ($setName == $newName)
+			{
+				$foundCount++;
+				$foundIndex = $setIndex;
+			}
+		}
+
+		if ($foundCount > 1)
+			warning "VC: Found duplicate colour set attribute instances";
+		//if ($foundCount == 0)
+		//	warning "VC: Couldn't find attribute";
+	}
+
+	// delete colorset
+	polyColorSet -delete -colorSet $newName;
+
+	// delete the attribute data
+	if ($foundIndex >= 0)
+	{
+		removeMultiInstance ($mesh + ".clst[" + $foundIndex + "]");
+	}
+
+	// delete attributes
+	string $layerAttrName = "VCP_Layer_" + $colorSetName;
+	string $attrVisible = ($layerAttrName + "_Visible");
+	string $attrBlendMode = ($layerAttrName + "_BlendMode");
+	string $attrBlendAmount = ($layerAttrName + "_BlendAmount");
+	if (`attributeQuery -node $mesh -exists $attrVisible`)
+	{
+		deleteAttr ($mesh + "." + $attrVisible);
+	}
+	if (`attributeQuery -node $mesh -exists $attrBlendMode`)
+	{
+		deleteAttr ($mesh + "." + $attrBlendMode);
+	}
+	if (`attributeQuery -node $mesh -exists $attrBlendAmount`)
+	{
+		deleteAttr ($mesh + "." + $attrBlendAmount);
+	}
+}
+
+global proc
+VCP_Layer_FlattenLayers(int $onlyVisible)
+{
+	global string $VCP_FINAL_LAYER_NAME;
+
+	$mesh = VCP_Layers_GetSelectedMesh();
+	if (`size $mesh` == 0)
+		return;
+
+	string $sets[] = `polyColorSet -q -allColorSets`;
+	if (size($sets)<2)
+		return;
+
+	if (!VCP_Layer_HasFinalComp())
+		return;
+
+	// Render master comp colorset
+	{
+		// Switch to final comp
+		VCP_Layers_SwitchViewToFinalComp();
+
+		// Render final comp
+		VCP_Layers_UpdateMesh($mesh);
+
+		// Switch to active layer
+		VCP_Layers_SwitchViewToActiveLayer();
+	}
+
+	// Delete all layers except master comp
+	for ($colorSetName in $sets)
+	{
+		if ($colorSetName != $VCP_FINAL_LAYER_NAME)
+		{
+			int $delete = 1;
+			if ($onlyVisible)
+			{
+				string $layerAttrName = "VCP_Layer_" + $colorSetName;
+				string $attrVisible = ($mesh + "." + $layerAttrName + "_Visible");
+				int $visible = `getAttr $attrVisible`;
+				if (!$visible)
+					$delete = 0;
+			}
+			
+			if ($delete)
+			{
+				VCP_Layer_DeleteColorSet($mesh, $colorSetName);
+			}
+		}
+	}
+
+	// TODO: now that we're potentially not deleting all the colorsets, the name
+	// "colorSet1" might be used, so we need to check for this.
+	// We also need to create the colorSet at the right order in the list.
+	// So we need to find the lowest layer that is visible, and then replace IT!
+	// And potentially append "_flattened" to the name
+	// Not sure which blend mode to set it to though.
+	string $flattenedName = "colorSet1";
+
+	// Copy master comp to a new colorSet
+	polyColorSet -copy -colorSet $VCP_FINAL_LAYER_NAME -newColorSet $flattenedName;
+
+	// Delete the old master comp
+	VCP_Layer_DeleteColorSet($mesh, $VCP_FINAL_LAYER_NAME);
+
+	// Rename the old master comp
+	//polyColorSet -rename -colorSet $VCP_FINAL_LAYER_NAME -newColorSet $flattenedName;
+
+	// Set new layer as the active layer
+	string $attrActive = "VCP_Layer_Active";
+	if (`attributeQuery -node $mesh -exists $attrActive`)
+	{
+		if (`VCP_Layer_HasColorSet($flattenedName)`)
+		{
+			setAttr -type "string" ($mesh + "." + $attrActive) $flattenedName;
+		}
+	}
+
+	// Update everything
+	VCP_Layers_UpdateUI();
+	VCP_Layers_UpdateMesh($mesh);
+	VCP_Layers_SwitchViewMode();
+}
+
+global proc
+VCP_Layer_DeleteLayer()
+{
+	global string $VCP_FINAL_LAYER_NAME;
+
+	$mesh = VCP_Layers_GetSelectedMesh();
+	if (`size $mesh` == 0)
+		return;
+
+	string $attrActive = "VCP_Layer_Active";
+	if (`attributeQuery -node $mesh -exists $attrActive`)
+	{
+		$colorSetName = `getAttr ($mesh + "." + $attrActive)`;
+
+		VCP_Layer_DeleteColorSet($mesh, $colorSetName);
+
+		// set another layer as active
+		string $sets[] = `polyColorSet -q -allColorSets`;
+		for ($colorSetName in $sets)
+		{
+			if ($colorSetName != $VCP_FINAL_LAYER_NAME)
+			{
+				setAttr -type "string" ($mesh + "." + $attrActive) $colorSetName;
+				break;
+			}
+		}
+	}
+
+	//evalDeferred("VCP_Layers_UpdateUI();VCP_Layers_UpdateMesh(\"" + $mesh + "\"); VCP_Layers_SwitchViewMode();");
+	VCP_Layers_UpdateUI();
+	VCP_Layers_UpdateMesh($mesh);
+
+	VCP_Layers_SwitchViewMode();
+}
+
+global proc
+VCP_Layers_UpdateActiveIcon(string $activeButton)
+{
+	string $oldParent = `setParent -q`;
+	setParent RH_VCP_Layers_List;
+
+	// go through all other icons and set their image
+	string $children[] = `layout -q -childArray RH_VCP_Layers_List`;
+	for ($child in $children)
+	{
+		string $rowLayouts[] = `layout -q -childArray $child`;
+		string $icons[] = `layout -q -childArray $rowLayouts[0]`;
+		iconTextRadioButton -e -i1 "VCP_Blank.xpm" $icons[0];
+	}
+
+	setParent $oldParent;
+
+	// set icon as active
+	iconTextRadioButton -e -i1 "VCP_LayerBrush.xpm" $activeButton;
+}
+
+global proc
+VCP_CreateLayerUI(string $name, int $isActive, int $isBaseLayer)
+{
+	$mesh = VCP_Layers_GetSelectedMesh();
+	if (`size $mesh` == 0)
+		return;
+
+	frameLayout -label ($name)
+				-labelVisible false
+				-labelIndent 4
+				-borderStyle "out"
+				-collapsable false
+				-marginWidth 2
+				-marginHeight 2;
+		$row=`rowLayout -adjustableColumn 3 -numberOfColumns 5 -columnWidth5 30 30 90 90 40
+			-columnAlign5 "left" "left" "left" "left" "left" 
+			-columnOffset5 0 0 0 0 0
+					-columnAttach 1 "both" 1 
+					-columnAttach 2 "both" 1 
+					-columnAttach 3 "both" 1 
+					-columnAttach 4 "both" 1 
+					-columnAttach 5 "both" 1
+					-rowAttach 1 "top" 3`;
+			//string $RB_active = `radioButton -label "" -align "left" -w 20`;
+			string $RB_active=`iconTextRadioButton -st "iconOnly" -selectionImage "VCP_LayerBrush.xpm" -i1 "VCP_Blank.xpm" -w 20 -h 20`;
+			string $SC_visible = `symbolCheckBox -image "VCP_eye_open.xpm" -onImage "VCP_eye_open.xpm" -offImage "VCP_eye_closed.xpm"`;
+			$TF_name = `textField -text $name -w 90 -editable true`;
+			string $OM_blendMode = `optionMenu -w 90`;
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_Replace")) -ann "Replace";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_Add")) -ann "Add";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_Subtract")) -ann "Subtract";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_Multiply")) -ann "Multiply";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_Difference")) -ann "Difference";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_Screen")) -ann "Screen";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_Overlay")) -ann "Overlay";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_LightenOnly")) -ann "Lighten Only";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_DarkenOnly")) -ann "Darken Only";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_Dodge")) -ann "Dodge";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_Burn")) -ann "Burn";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_HueReplace")) -ann "Hue Replace";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_SaturationReplace")) -ann "Saturation Replace";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_ColourReplace")) -ann "Colour Replace";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_ValueReplace")) -ann "Value Replace";
+				string $ff_blend=`floatField -minValue 0 -maxValue 100 -value 100 -pre 1 -w 40`;
+			//$SL_blend=`floatSliderGrp -l "" -field true -cw4 5 5 5 1 -pre 0 -v 100 -min 0 -max 100 -adjustableColumn 1`;
+		setParent ..;
+	//separator;
+	setParent ..;
+
+	if ($isBaseLayer)
+	{
+		optionMenu -e -enable false $OM_blendMode;
+		floatField -e -enable false $ff_blend;
+		symbolCheckBox -e -enable false $SC_visible;
+	}
+
+	// Settings
+	string $layerAttrName = "VCP_Layer_" + $name;
+	string $attrVisible = ($mesh + "." + $layerAttrName + "_Visible");
+	string $attrBlendMode = ($mesh + "." + $layerAttrName + "_BlendMode");
+	string $attrBlendAmount = ($mesh + "." + $layerAttrName + "_BlendAmount");
+	int $visible = `getAttr $attrVisible`;
+	string $blendMode = `getAttr $attrBlendMode`;
+	float $blendAmount = `getAttr $attrBlendAmount`;
+	RH_SetOptionMenuValue_ByAnnotation($OM_blendMode, $blendMode);
+	floatField -e -value $blendAmount $ff_blend;
+	$cmd = ("VCP_Layers_Rename " + $name + " " + $TF_name);
+	textField -e -changeCommand $cmd $TF_name;
+	if ($isActive)
+	{
+		iconTextRadioButton -e -select $RB_active;
+		VCP_Layers_UpdateActiveIcon($RB_active);
+	}
+
+	if ($visible)
+	{
+		//symbolCheckBox -e -image "VCP_eye_open.xpm" -value true $SC_visible;
+		symbolCheckBox -e -value true $SC_visible;
+	}
+	else
+	{
+		//symbolCheckBox -e -image "VCP_eye_closed.xpm" -value false $SC_visible;
+		symbolCheckBox -e -value false $SC_visible;
+	}
+
+	// Commands
+	string $cmd = "";
+	//$cmd = "symbolCheckBox -e -image \"VCP_eye_open.xpm\" " + $SC_visible + ";";
+	$cmd += "setAttr " + $attrVisible + " true;";
+	$cmd += "VCP_Layers_UpdateMesh " + $mesh + ";";
+	// TODO: disable the whole row
+	symbolCheckBox -e -onCommand $cmd $SC_visible;
+
+	$cmd = "";
+	//$cmd = "symbolCheckBox -e -image \"VCP_eye_closed.xpm\" " + $SC_visible + ";";
+	$cmd += "setAttr " + $attrVisible + " false;";
+	$cmd += "VCP_Layers_UpdateMesh " + $mesh + ";";
+	// TODO: disable the whole row
+	symbolCheckBox -e -offCommand $cmd $SC_visible;
+
+	$cmd = "setAttr -type \"string\" " + $attrBlendMode + " (`RH_GetOptionMenuItemAnnotation " + $OM_blendMode + "`);";
+	$cmd += "VCP_Layers_UpdateMesh " + $mesh + ";";
+	optionMenu -e -changeCommand $cmd $OM_blendMode;
+
+	$cmd = "setAttr " + $attrBlendAmount + " (`floatField -q -value " + $ff_blend + "`);";
+	$cmd += "VCP_Layers_UpdateMesh " + $mesh + ";";
+	floatField -e -changeCommand $cmd $ff_blend;
+
+	string $attrActive = ".VCP_Layer_Active";
+	$cmd = "setAttr -type \"string\" " + $mesh + $attrActive + " " + $name + ";";
+	//$cmd += "VCP_Layers_UpdateMesh " + $mesh + ";";
+	$cmd += "VCP_Layers_SwitchViewMode();";
+	$cmd += ("VCP_Layers_UpdateActiveIcon " + $RB_active + ";");
+	//$cmd += "rowLayout -e -manage false -bgc 1.0 0.0 1.0 " + $row + ";";
+	//$cmd += "rowLayout -e -manage true -bgc 1.0 0.0 1.0 " + $row;
+	iconTextRadioButton -e -onCommand $cmd $RB_active;
+}
+
+global proc
+VCP_Layers_UpdateMesh(string $mesh)
+{
+	if (`optionVar -q RH_VCP_Layers_ViewMode` == "Final Composite")
+	{
+		string $cmd = "RH_VertexPolyColour -op 901 ";
+		if (`optionVar -query RH_VCP_NoUndo`)
+			$cmd += " -nun ";
+
+		if (`optionVar -query RH_VCP_Verbose` > 0)
+		{
+			$cmd += " -verbose ";
+		}
+		eval($cmd);
+	}
+}
+
+global proc
+VCP_CreateFrame_Layers()
+{
+	frameLayout -label (VCP_uiRes("m_RH_VCP.kLayers_WindowTitle"))
+				-labelIndent 4
+				-borderStyle "etchedIn"
+				-collapsable true
+				-marginWidth 4
+				-marginHeight 4;
+
+		VCP_CreateFrameContents_Layers;
+
+	setParent ..;
+}
+
+global proc
+VCP_Layers_CreateUILayers()
+{
+	$mesh = VCP_Layers_GetSelectedMesh();
+	if (`size $mesh` == 0)
+		return;
+
+	string $sets[] = `polyColorSet -q -allColorSets`;
+	VCP_Layers_CreateUILayers2($sets);
+}
+
+global proc string[]
+VCP_Layers_GetValidLayersList(string $mesh, string $sets[])
+{
+	global string $VCP_FINAL_LAYER_NAME;
+
+	string $layers[];
+	int $layerOrderUpdated = false;
+	{
+		if (`attributeQuery -node $mesh -exists "VCP_LayerOrder"`)
+		{
+			$layerString = `getAttr ($mesh + ".VCP_LayerOrder")`;
+			$layers = stringToStringArray($layerString, ",");
+
+			// Check that all layers have a colorset
+			{
+				string $removeList[];
+				for ($layerName in $layers)
+				{
+					int $found = false;
+					for ($colorSetName in $sets)
+					{
+						if ($colorSetName != $VCP_FINAL_LAYER_NAME)
+						{
+							if ($layerName == $colorSetName)
+							{
+								$found = true;
+								break;
+							}
+						}
+					}
+
+					// Remove this layer from the list
+					if (!$found)
+					{
+						$removeList[size($removeList)] = $layerName;
+					}
+				}
+
+				// Remove any layers that don't have colorsets
+				if (size($removeList) > 0)
+				{
+					$layers = stringArrayRemoveExact($removeList, $layers);
+					$layerOrderUpdated = true;
+				}
+			}
+
+			// Check that all colorsets are in the layer list
+			for ($colorSetName in $sets)
+			{
+				if ($colorSetName != $VCP_FINAL_LAYER_NAME)
+				{
+					int $found = false;
+					for ($layerName in $layers)
+					{
+						if ($layerName == $colorSetName)
+						{
+							$found = true;
+							break;
+						}
+					}
+
+					// If the colorset isn't in the order list, we add it to the end
+					if (!$found)
+					{
+						$layers[size($layers)] = $colorSetName;
+						$layerOrderUpdated = true;
+					}
+				}
+			}
+		}
+	}
+
+	// Write layer order attribute
+	if ($layerOrderUpdated)
+	{
+		string $layerString = stringArrayToString($layers, ",");
+		setAttr -type "string" ($mesh + ".VCP_LayerOrder") $layerString;
+	}
+	
+	return $layers;
+}
+
+global proc
+VCP_Layers_CreateUILayers2(string $sets[])
+{
+	global string $VCP_FINAL_LAYER_NAME;
+
+	$mesh = VCP_Layers_GetSelectedMesh();
+	if (`size $mesh` == 0)
+		return;
+
+	VCP_Layer_VerifyMeshAttributes($mesh);
+
+	// Validate layers list
+	string $layers[] = VCP_Layers_GetValidLayersList($mesh, $sets);
+  
+	// Create default attributes for all layers
+	for ($layerName in $layers)
+	{
+		VCP_Layer_CreateDefaultLayerAttribs($mesh, $layerName);
+	}
+
+	// Validate active layer
+	string $activeLayerName;
+	{
+		// See if we have an active layer
+		$activeLayerName = "VCP_noActiveLayer949837294727";
+		string $attrActive = "VCP_Layer_Active";
+		if (`attributeQuery -node $mesh -exists $attrActive`)
+		{
+			$activeLayerName = `getAttr ($mesh + "." + $attrActive)`;
+		}
+
+		int $isActiveFound = false;
+		for ($layerName in $layers)
+		{
+			if ($layerName != $VCP_FINAL_LAYER_NAME)
+			{
+				if ($layerName == $activeLayerName)
+				{
+					$isActiveFound = true;
+					break;
+				}
+			}
+		}
+
+		// If the active layer is not found, choose another layer to be active
+		if (!$isActiveFound && size($layers)>0)
+		{
+			$activeLayerName = $layers[0];
+			
+			// Write new active layer attribute
+			setAttr -type "string" ($mesh + ".VCP_Layer_Active") $activeLayerName;
+		}
+	}
+
+	// Create UI layer for each colorset
+	// Run through the list backwards so that newer layers appear at the top
+	for ($i = 1; $i <= size($layers); $i++)
+	{
+		string $layerName = $layers[size($layers) - $i];
+
+		// Except the final composition set
+		if ($layerName != $VCP_FINAL_LAYER_NAME)
+		{
+			int $isActive = ($layerName == $activeLayerName);
+			int $isBaseLayer = ($i == size($layers));
+			VCP_CreateLayerUI($layerName, $isActive, $isBaseLayer);
+		}
+	}
+}
+
+global proc
+VCP_CreateFrameContents_Layers()
+{
+	string $form = `formLayout -numberOfDivisions 100 -width 320 -height 500`;
+		$sectionTop=`columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 0`;
+			rowLayout -adjustableColumn 2 -numberOfColumns 3 -columnWidth3 30 120 160
+				-columnAlign3 "left" "left" "right"
+				-columnAttach 1 "both" 0 
+				-columnAttach 2 "both" 5
+				-columnAttach 3 "both" 0;
+				text -label (VCP_uiRes("m_RH_VCP.kLayers_Mesh"));
+				text -label "none" -font "boldLabelFont" RH_VCP_Layers_MeshName;
+				string $OM_viewMode = `optionMenuGrp -cw2 40 120 -columnAlign 1 "left" -label (VCP_uiRes("m_RH_VCP.kLayers_View")) RH_VCP_OptionMenu_LayersViewMode`;
+					menuItem -label (VCP_uiRes("m_RH_VCP.kLayers_FinalComposite")) -ann "Final Composite";
+					menuItem -label (VCP_uiRes("m_RH_VCP.kLayers_ActiveLayer")) -ann "Active Layer";
+			setParent ..;
+		setParent ..;
+
+		iconTextRadioCollection;
+		$sectionLayers=`scrollLayout -horizontalScrollBarThickness 0 -childResizable true`;
+			columnLayout -columnAlign "left" -adjustableColumn true -rowSpacing 0 -columnAttach "both" 0 RH_VCP_Layers_List;
+				VCP_Layers_CreateUILayers;
+			setParent ..;
+		setParent ..;
+
+		$sectionBot=`columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 4`;
+			rowLayout -adjustableColumn 3 -numberOfColumns 3 -columnWidth3 90 90 90
+				-columnAlign3 "center" "center" "center"
+				-columnAttach 1 "both" 0 
+				-columnAttach 2 "both" 0 
+				-columnAttach 3 "both" 0;
+				columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 0 -columnAttach "both" 0;
+					$BN_create=`button -label (VCP_uiRes("m_RH_VCP.kLayers_Create"))`;
+					$BN_delete=`button -label (VCP_uiRes("m_RH_VCP.kLayers_Delete"))`;
+				setParent ..;
+				columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 0 -columnAttach "both" 0;
+					$BN_duplicate=`button -label (VCP_uiRes("m_RH_VCP.kLayers_Duplicate"))`;
+					$BN_flatten=`button -label (VCP_uiRes("m_RH_VCP.kLayers_Flatten"))`;
+				setParent ..;
+				/*
+				columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 0 -columnAttach "both" 0;
+					$BN_duplicate=`button -label "Duplicate"`;
+					$BN_duplicate2=`button -label "Duplicate2"`;
+				setParent ..;
+				columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 0 -columnAttach "both" 0;
+					$BN_flatten=`button -label "Flatten"`;
+					$BN_flattenVisible = `button -label "Flatten Visible"`;
+				setParent ..;
+				*/
+				columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 0 -columnAttach "both" 0;
+					$BN_up = `button -label (VCP_uiRes("m_RH_VCP.kLayers_Up"))`;
+					$BN_down = `button -label (VCP_uiRes("m_RH_VCP.kLayers_Down"))`;
+				setParent ..;
+			setParent ..;
+			$BN_refresh = `button -label(VCP_uiRes("m_RH_VCP.kLayers_Refresh"))`;
+		setParent ..;
+	setParent ..;
+
+	formLayout -edit
+		-attachForm     $sectionTop        "top"    2
+		-attachControl  $sectionLayers     "top"    2  $sectionTop
+		-attachForm     $sectionTop        "left"   2
+		-attachForm     $sectionTop        "right"  2
+		-attachForm     $sectionLayers     "left"   2
+		-attachForm     $sectionLayers     "right"  2
+		-attachForm     $sectionBot        "left"   2
+		-attachForm     $sectionBot        "right"  2
+		-attachForm     $sectionBot        "bottom" 2
+        -attachControl  $sectionLayers     "bottom" 2  $sectionBot
+		$form;
+
+	// Settings
+	RH_SetOptionMenuGrpValue_ByAnnotation($OM_viewMode, `optionVar -query RH_VCP_Layers_ViewMode`);
+	
+	// Commands
+	button -e -command "VCP_Layer_CreateLayer" $BN_create;
+	button -e -command "VCP_Layer_DuplicateLayer" $BN_duplicate;
+	button -e -command "VCP_Layer_DeleteLayer" $BN_delete;
+	button -e -command "VCP_Layer_FlattenLayers(0)" $BN_flatten;
+	//button -e -command "VCP_Layer_FlattenLayers(1)" $BN_flattenVisible;
+	button -e -command "VCP_Layer_MoveUpDown 1" $BN_up;
+	button -e -command "VCP_Layer_MoveUpDown 0" $BN_down;
+
+	string $cmd = "VCP_SetVarFromOptionMenuGrp_ByAnnotation " + $OM_viewMode + " RH_VCP_Layers_ViewMode; VCP_Layers_UpdateMesh(\"bob\"); VCP_Layers_SwitchViewMode;";
+	optionMenuGrp -e -changeCommand $cmd $OM_viewMode;
+
+	string $updateCommand="VCP_Layers_UpdateUI";
+	button -e -command $updateCommand $BN_refresh;
+}
+
+global proc
+VCP_Layers_SwitchViewToFinalComp()
+{
+	optionVar -stringValue "RH_VCP_Layers_ViewMode" "Final Composite";
+	RH_SetOptionMenuGrpValue_ByAnnotation("RH_VCP_OptionMenu_LayersViewMode", `optionVar -query RH_VCP_Layers_ViewMode`);
+
+	VCP_Layers_UpdateUI();
+	VCP_Layers_SwitchViewMode();
+}
+
+global proc
+VCP_Layers_SwitchViewToActiveLayer()
+{
+	optionVar -stringValue "RH_VCP_Layers_ViewMode" "Active Layer";
+	RH_SetOptionMenuGrpValue_ByAnnotation("RH_VCP_OptionMenu_LayersViewMode", `optionVar -query RH_VCP_Layers_ViewMode`);
+
+	VCP_Layers_UpdateUI();
+	VCP_Layers_SwitchViewMode();
+}
+
+global proc
+VCP_Layers_SwitchViewMode()
+{
+	global string $VCP_FINAL_LAYER_NAME;
+
+	$mesh = VCP_Layers_GetSelectedMesh();
+	if (`size $mesh` > 0)
+	{
+		if (`window -ex RH_VCP_LayersWindow`) 
+		{ 
+		  // Update mesh name
+		  text -e -label $mesh RH_VCP_Layers_MeshName;
+		}
+
+		string $viewMode = `optionVar -q RH_VCP_Layers_ViewMode`;
+
+		//setAttr -type "string" ($mesh + ".VCP_Layer_ViewMode") $viewMode;
+		if ($viewMode == "Final Composite")
+		{
+			if (`VCP_Layer_HasColorSet($VCP_FINAL_LAYER_NAME)`)
+			{
+				polyColorSet -currentColorSet -colorSet $VCP_FINAL_LAYER_NAME;
+			}
+		}
+		if ($viewMode == "Active Layer")
+		{
+			string $attrActive = "VCP_Layer_Active";
+			if (`attributeQuery -node $mesh -exists $attrActive`)
+			{
+				string $activeLayer = `getAttr ($mesh + "." + $attrActive)`;
+				if (`VCP_Layer_HasColorSet($activeLayer)`)
+				{
+					polyColorSet -currentColorSet -colorSet $activeLayer;
+				}
+			}
+		}
+	}
+	else
+	{
+		if (`window -ex RH_VCP_LayersWindow`) 
+		{
+		  // Update mesh name
+		  text -e -label "" RH_VCP_Layers_MeshName;
+		}
+	}
+}
+
+global proc
+VCP_Layers_UpdateUI()
+{
+	if (`window -ex RH_VCP_LayersWindow`) 
+	{
+		// NOTE: For some WEIRD reason we have to get the colorsets 
+		// BEFORE we delete the UI, otherwise it crashes sometimes.
+		//
+		string $sets[] = `polyColorSet -q -allColorSets`;
+
+		string $oldParent = `setParent -q`;
+
+		setParent RH_VCP_Layers_List;
+		string $children[] = `layout -q -childArray RH_VCP_Layers_List`;
+		for ($child in $children)
+		{
+			deleteUI -layout $child;
+		}
+
+		setParent RH_VCP_Layers_List;
+		
+		//VCP_Layers_CreateUILayers();
+		VCP_Layers_CreateUILayers2($sets);
+		
+		setParent $oldParent;
+
+		VCP_Layers_UpdateMesh("bob");
+		VCP_Layers_SwitchViewMode();
+	}
+}
+
+global proc
+VCP_ShowLayersWindow()
+{
+	if (`window -ex RH_VCP_LayersWindow`) 
+	{
+		// If minimised
+		if (`window -q -iconify RH_VCP_LayersWindow`)
+		{
+			window -e -iconify false RH_VCP_LayersWindow;
+		}
+		return;
+	}
+	else
+	{
+		VCP_CreateWindow RH_VCP_LayersWindow (VCP_uiRes("m_RH_VCP.kLayers_WindowTitle")) (VCP_uiRes("m_RH_VCP.kLayers_WindowTitleShort")) VCP_CreateFrameContents_Layers;
+
+		window -e -wh 330 250 RH_VCP_LayersWindow;
+
+		// Create the scriptjob
+		string $updateCommand="VCP_Layers_UpdateUI();VCP_Layers_UpdateUI();";
+		int $jobNum = `scriptJob -parent RH_VCP_LayersWindow -event SelectionChanged $updateCommand`;
+
+		// Run the script job
+		eval($updateCommand);
+	}
+}

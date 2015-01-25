@@ -1,0 +1,60 @@
+//
+// Vertex Chameleon Maya Plugin Source Code
+// Copyright (C) 2007-2014 RenderHeads Ltd.
+//
+// This source is available for distribution and/or modification
+// only under the terms of the MIT license.  All rights reserved.
+//
+// The source is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// FITNESS FOR A PARTICULAR PURPOSE. See the MIT license
+// for more details.
+//
+
+proc
+VCP_CreateFrame_HSV_Content()
+{
+	columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 0;
+
+		$SL_hue=`floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kHSV_Hue")) -field true  -cw3 60 40 50 -cc "" -pre 2 -v 0 -min -180 -max 180 -adjustableColumn 3`;
+		$SL_sat=`floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kHSV_Saturation")) -field true  -cw3 60 40 50 -cc "" -pre 2 -v 0 -min -1 -max 1 -adjustableColumn 3`;
+		$SL_val=`floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kHSV_Value")) -field true  -cw3 60 40 50 -cc "" -pre 2 -v 0 -min -1 -max 1 -adjustableColumn 3`;
+
+	setParent ..;
+
+	VCP_SetupSlider($SL_hue, "colorH", 301);
+	VCP_SetupSlider($SL_sat, "colorS", 301);
+	VCP_SetupSlider($SL_val, "colorV", 301);
+}
+
+global proc
+VCP_CreateFrame_HSV(int $hasFrame)
+{
+	if ($hasFrame)
+	{
+		int $frameCollapse = `optionVar -query "RH_VCP_FrameAdjustHSV"`;
+		$frame = `frameLayout -label (VCP_uiRes("m_RH_VCP.kHSV_FrameTitle"))
+					-labelIndent 4
+					-borderStyle "etchedIn"
+					-collapsable true
+					-collapse $frameCollapse
+					-marginWidth 4
+					-marginHeight 4`;
+			VCP_CreateFrame_HSV_Content();
+		setParent ..;
+
+		frameLayout	-e -collapseCommand "optionVar -intValue RH_VCP_FrameAdjustHSV 1" $frame;
+		frameLayout	-e -expandCommand "optionVar -intValue RH_VCP_FrameAdjustHSV 0" $frame;
+	}
+	else
+	{
+		$frame = `frameLayout
+					-labelVisible false
+					-borderStyle "etchedIn"
+					-collapsable false
+					-marginWidth 4
+					-marginHeight 4`;
+			VCP_CreateFrame_HSV_Content();
+		setParent ..;
+	}
+}

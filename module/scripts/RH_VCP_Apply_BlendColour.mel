@@ -1,0 +1,280 @@
+//
+// Vertex Chameleon Maya Plugin Source Code
+// Copyright (C) 2007-2014 RenderHeads Ltd.
+//
+// This source is available for distribution and/or modification
+// only under the terms of the MIT license.  All rights reserved.
+//
+// The source is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// FITNESS FOR A PARTICULAR PURPOSE. See the MIT license
+// for more details.
+//
+
+//global string $VCP_TintCanvasRGB, $VCP_TintCanvasAlpha;
+global string $RH_VCP_AbsPaintObjectName;
+global string $g_RH_VCP_absolutePaintCommand;
+
+proc
+VCP_CreateFrame_BlendColour_Content()
+{
+	//global string $VCP_TintCanvasRGB, $VCP_TintCanvasAlpha;
+
+	columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 4;
+		/*columnLayout -columnAlign "left" -adjustableColumn true -rowSpacing 0;
+			$VCP_TintCanvasRGB=`canvas -rgbValue 0 0 0 -width 50 -height 40 -manage false`;
+			$VCP_TintCanvasAlpha=`canvas -rgbValue 1 1 1 -width 50 -height 10 -manage false`;
+		setParent..;*/
+		rowLayout -numberOfColumns 2 -cw2 150 100 -adjustableColumn2 2 -columnAttach 1 "both" 2 -columnAttach 2 "both" 2;
+			string $OM_blendMode = `optionMenuGrp -cw2 60 150 -adjustableColumn 2 -columnAlign 1 "right" -columnAlign 2 "left" -label (VCP_uiRes("m_RH_VCP.kBlendColour_Blending"))`;
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_Replace")) -ann "Replace";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_Add")) -ann "Add";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_Subtract")) -ann "Subtract";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_Multiply")) -ann "Multiply";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_Difference")) -ann "Difference";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_Screen")) -ann "Screen";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_Overlay")) -ann "Overlay";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_LightenOnly")) -ann "Lighten Only";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_DarkenOnly")) -ann "Darken Only";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_Dodge")) -ann "Dodge";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_Burn")) -ann "Burn";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_HueReplace")) -ann "Hue Replace";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_SaturationReplace")) -ann "Saturation Replace";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_ColourReplace")) -ann "Colour Replace";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_ValueReplace")) -ann "Value Replace";
+			$SL_blend=`floatSliderGrp -l "" -field true -el "%" -cw4 1 35 1 20 -pre 0 -v 100 -min 0 -max 100 -adjustableColumn 3 `;
+		setParent ..;
+		separator;
+		$SL_tint=`floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kBlendColour_Apply")) -field true -el "%" -cw4 60 35 1 20 -pre 0 -v 0 -min 0 -max 100 -adjustableColumn 3 `;
+		$BN_apply=`button -w 100 -h 20 -label (VCP_uiRes("m_RH_VCP.kBlendColour_Apply"))`;
+	setParent ..;
+
+	VCP_SetupBlendSlider($SL_tint);
+		
+	// Commands
+	{
+		floatSliderGrp -edit -changeCommand ("VCP_SetVarFromSliderGroup " + $SL_blend + " RH_Col_BlendAmount") $SL_blend;
+		optionMenuGrp -edit -changeCommand ("VCP_SetVarFromOptionMenuGrp_ByAnnotation " + $OM_blendMode + " RH_Col_BlendMode") $OM_blendMode;
+
+		string $doCommand;
+
+		// TODO: set colour chooser to this colour on click
+		/*$doCommand=("VCP_ShowColourChooser;");
+		canvas -e -pressCommand $doCommand $VCP_TintCanvasRGB;
+		canvas -e -pressCommand $doCommand $VCP_TintCanvasAlpha;
+		popupMenu -button 3
+			-parent $VCP_TintCanvasRGB
+			-postMenuCommand "VCP_Apply_SpawnColorEditor";
+		popupMenu -button 3
+			-parent $VCP_TintCanvasAlpha
+			-postMenuCommand "VCP_Apply_SpawnColorEditor";
+		*/	
+		$doCommand=("VCP_ApplyAbsolute;");
+		button -edit -command $doCommand $BN_apply;
+
+		//button -edit -command "VCP_PaintAbsolute" $BN_paint;
+	}
+
+	// Settings
+	{
+		floatSliderGrp -edit -value `optionVar -query RH_Col_BlendAmount` $SL_blend;
+		RH_SetOptionMenuGrpValue_ByAnnotation($OM_blendMode, `optionVar -query RH_Col_BlendMode`);
+
+		/*canvas -e -rgbValue (`optionVar -q "RH_VCP_ApplyColourR"`) (`optionVar -q "RH_VCP_ApplyColourG"`) (`optionVar -q "RH_VCP_ApplyColourB"`) $VCP_TintCanvasRGB;
+		canvas -e -rgbValue (`optionVar -q "RH_VCP_ApplyColourA"`) (`optionVar -q "RH_VCP_ApplyColourA"`) (`optionVar -q "RH_VCP_ApplyColourA"`) $VCP_TintCanvasAlpha;
+		*/
+	}
+}
+
+global proc
+VCP_CreateFrame_BlendColour(int $hasFrame)
+{
+	if ($hasFrame)
+	{
+		int $frameCollapse = `optionVar -query "RH_VCP_FrameApplyBlend"`;
+		$frame = `frameLayout -label (VCP_uiRes("m_RH_VCP.kBlendColour_FrameTitle"))
+					-labelIndent 4
+					-borderStyle "etchedIn"
+					-collapsable true
+					-collapse $frameCollapse
+					-marginWidth 4
+					-marginHeight 4`;
+			VCP_CreateFrame_BlendColour_Content();
+		setParent ..;
+		
+		frameLayout	-e -collapseCommand "optionVar -intValue RH_VCP_FrameApplyBlend 1" $frame;
+		frameLayout	-e -expandCommand "optionVar -intValue RH_VCP_FrameApplyBlend 0" $frame;
+	}
+	else
+	{
+		$frame = `frameLayout
+					-labelVisible false
+					-borderStyle "etchedIn"
+					-collapsable false
+					-marginWidth 4
+					-marginHeight 4`;
+			VCP_CreateFrame_BlendColour_Content();
+		setParent ..;
+	}
+}
+
+/*
+global proc
+VCP_Apply_SpawnColorEditor()
+{
+	global string $VCP_TintCanvasRGB;
+	global string $VCP_TintCanvasAlpha;
+
+	float $crgb[] = `canvas -query -rgbValue $VCP_TintCanvasRGB`;
+	float $calpha[] = `canvas -query -rgbValue $VCP_TintCanvasAlpha`;
+	
+	string $cmd;
+	$cmd = "colorEditor -alpha " + $calpha[0] + " -rgbValue " + $crgb[0] + " " + $crgb[1] + " " + $crgb[2];
+	eval($cmd);
+	
+	if (`colorEditor -query -result`)
+	{
+		// update color
+		float $rgb[] = `colorEditor -query -rgbValue`;
+		float $alpha = `colorEditor -query -alpha`;
+		canvas -e -rgbValue $rgb[0] $rgb[1] $rgb[2] $VCP_TintCanvasRGB;
+		canvas -e -rgbValue $alpha $alpha $alpha $VCP_TintCanvasAlpha;
+	}
+}
+*/
+
+global proc
+VCP_ApplyAbsolute()
+{
+	global string $VCP_ApplyCanvasRGB, $VCP_ApplyCanvasAlpha;
+
+	float $rgb[] = `canvas -query -rgbValue $VCP_ApplyCanvasRGB`;
+	float $alpha[] = `canvas -query -rgbValue $VCP_ApplyCanvasAlpha `;
+
+	string $cmd = "RH_VertexPolyColour -op 400 ";
+	$cmd += " -colorR " + $rgb[0];
+	$cmd += " -colorG " + $rgb[1];
+	$cmd += " -colorB " + $rgb[2];
+	$cmd += " -colorA " + $alpha[0];
+
+	if (`optionVar -query RH_VCP_Verbose` > 0)
+	{
+		$cmd += " -verbose ";
+	}
+	if (`optionVar -query RH_VCP_NoUndo`)
+		$cmd += " -nun ";
+
+	int $forceComponent = `optionVar -query RH_VCP_ComponentOverride`;
+	if ($forceComponent > 1)
+	{
+		if ($forceComponent == 2)
+			$cmd += " -forceComponent 1 ";
+		if ($forceComponent == 3)
+			$cmd += " -forceComponent 2 ";
+	}
+	
+	float $blendAmount = `optionVar -query "RH_Col_BlendAmount"` * 0.01;
+	if ($blendAmount != 0.0)
+	{
+		string $blendMode = `optionVar -query "RH_Col_BlendMode"`;
+		
+		$cmd += " -blend " + $blendAmount;
+		$cmd += " -blendMode \"" + $blendMode + "\"";
+	}
+	$cmd += " -channelMask " + `optionVar -q RH_VCP_ChannelMask` + " ";
+
+	eval($cmd);
+}
+/*
+global proc
+VCP_BuildAbsolutePaintCommand()
+{
+	global string $RH_VCP_AbsPaintObjectName;
+	global string $g_RH_VCP_absolutePaintCommand;
+	global string $VCP_ApplyCanvasRGB;
+	global string $VCP_ApplyCanvasAlpha;
+
+	string $cmd = "RH_VertexPolyColour -op 400 -paint -object " + $RH_VCP_AbsPaintObjectName;
+	
+	float $blendAmount = `optionVar -query "RH_Col_BlendAmount"` * 0.01;
+	if ($blendAmount != 0.0)
+	{
+		string $blendMode = `optionVar -query "RH_Col_BlendMode"`;
+		
+		$cmd += " -blend " + $blendAmount;
+		$cmd += " -blendMode \"" + $blendMode + "\" ";
+	}
+
+	if (`optionVar -query RH_VCP_Verbose` > 0)
+	{
+		$cmd += " -verbose ";
+	}
+
+	float $rgb[] = `canvas -query -rgbValue $VCP_ApplyCanvasRGB`;
+	float $alpha[] = `canvas -query -rgbValue $VCP_ApplyCanvasAlpha`;
+	$cmd += " -colorR " + $rgb[0];
+	$cmd += " -colorG " + $rgb[1];
+	$cmd += " -colorB " + $rgb[2];
+	$cmd += " -colorA " + $alpha[0];
+
+	//print $cmd;
+	$g_RH_VCP_absolutePaintCommand = $cmd;
+}
+
+global proc
+VCP_PaintAbsolute()
+{
+	///  Sets up the command and starts the paint tool
+	artUserPaintToolScript  4;
+	artUserPaintCtx -e -tsc "VCP_PaintAbsoluteSetup" `currentCtx`;
+	VCP_PaintAbsoluteSetup artUserPaintContext;
+}
+
+global proc
+VCP_PaintAbsoluteSetup(string $toolContext)
+{
+	///  Sets up the paint context and assigns the commands to the tool
+    artUserPaintCtx -e
+        -ic "VCP_PaintAbsoluteSettings"
+	    -fc "VCP_PaintAbsoluteFinalize"
+        -svc "VCP_PaintAbsoluteStroke" 
+   		-gvc ""
+		-gsc ""
+		-cc ""
+		-tcc ""
+		-gac ""        
+        $toolContext;
+} 
+
+global proc string 
+VCP_PaintAbsoluteSettings(string $name)
+{
+	global string $RH_VCP_OldWireDisplay;
+	global string $RH_VCP_AbsPaintObjectName;
+	$RH_VCP_AbsPaintObjectName = $name;
+
+	VCP_BuildAbsolutePaintCommand();
+
+	$RH_VCP_OldWireDisplay = `displayPref -q -wsa`;
+	displayPref -wireframeOnShadedActive "none";
+	return "";
+}
+
+
+global proc 
+VCP_PaintAbsoluteFinalize(int $slot)
+{
+	global string $RH_VCP_OldWireDisplay;
+	displayPref -wireframeOnShadedActive $RH_VCP_OldWireDisplay;
+}
+
+global proc 
+VCP_PaintAbsoluteStroke(
+					int $surfaceID,
+					int $index, 
+					float $value
+				   )
+{
+	global string $g_RH_VCP_absolutePaintCommand;
+	eval($g_RH_VCP_absolutePaintCommand + " -vertexIndex " + $index);
+}*/

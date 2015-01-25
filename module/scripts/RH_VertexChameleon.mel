@@ -1,0 +1,1812 @@
+//
+// Vertex Chameleon Maya Plugin Source Code
+// Copyright (C) 2007-2014 RenderHeads Ltd.
+//
+// This source is available for distribution and/or modification
+// only under the terms of the MIT license.  All rights reserved.
+//
+// The source is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// FITNESS FOR A PARTICULAR PURPOSE. See the MIT license
+// for more details.
+//
+
+source "RH_VCP_Base.mel";
+source "RH_VCP_Apply_Colour.mel";
+source "RH_VCP_ColourSwatch.mel";
+source "RH_VCP_ChannelSwapper.mel";
+source "RH_VCP_Apply_GradientSlider.mel";
+source "RH_VCP_Apply_Gradient.mel";
+source "RH_VCP_ColourInspector.mel";
+source "RH_VCP_Apply_BlendColourSlider.mel";
+source "RH_VCP_Apply_BlendColour.mel";
+source "RH_VCP_Apply_RandomComponents.mel";
+source "RH_VCP_Apply_ConvertNormals.mel";
+source "RH_VCP_Apply_Facetise.mel";
+source "RH_VCP_MentalRayBaking.mel";
+source "RH_VCP_Adjust_BC.mel";
+source "RH_VCP_Adjust_Clamp.mel";
+source "RH_VCP_Adjust_Saturate.mel";
+source "RH_VCP_Adjust_HSV.mel";
+source "RH_VCP_Adjust_Invert.mel";
+source "RH_VCP_Adjust_Levels.mel";
+source "RH_VCP_Adjust_Nudge.mel";
+source "RH_VCP_Adjust_Posterize.mel";
+source "RH_VCP_Adjust_RGBA.mel";
+source "RH_VCP_Adjust_Invert.mel";
+source "RH_VCP_Adjust_Filters.mel";
+source "RH_VCP_Apply_3DTexture.mel";
+source "RH_VCP_Layers.mel";
+source "RH_VCP_Adjust.mel";
+
+global string $RH_VCP_OldWireDisplay;
+
+global proc
+RH_VCP_BlankSeparator()
+{
+	if (`about -mac`)
+        {
+			// Mac has a problem with separators of style none
+			columnLayout -height 4;
+				separator -style "none";
+			setParent ..;
+        }
+	else
+	{
+		columnLayout -height 4;
+			separator -style "none";
+		setParent ..;
+	}
+}
+
+// In Maya2011 the field element of a floatSliderGrp can't be set to smaller than 60.  
+// In previous versions of Maya this could be set to any size.
+global proc int
+RH_VCP_MayaHasBug_2011_floatSliderGrp_field_size_minimum_fixed_to_60()
+{
+	string $mayaVersion = `about -version`;
+	if (startsWith($mayaVersion, "2011"))
+	{
+		return true;
+	}
+
+	return false;
+}
+
+// In Maya2011 they have removed alpha from the colorEditor
+global proc int
+RH_VCP_MayaHasBug_2011_colorEditorMissingAlpha()
+{
+	string $mayaVersion = `about -version`;
+	if (startsWith($mayaVersion, "2011"))
+	{
+		return true;
+	}
+
+	return false;
+}
+
+global proc
+RH_SetVarFromOptionMenu(string $control, string $varName)
+{
+	string $val = `optionMenu -query -value $control`;
+	optionVar -stringValue $varName $val;
+}
+
+// Signifying that this is the initial time we're running the plugin in this session of Maya
+global int $RH_VCP_InitialBootup = 1;
+
+global proc
+RH_SetVarFromIntSliderGrp(string $control, string $varName)
+{
+	float $val = `intSliderGrp -query -value $control`;
+	optionVar -intValue $varName $val;
+}
+
+proc string
+RH_FindOptionMenuItem_ByLabel(string $menu, string $label)
+{
+	string $result;
+	string $items[] = `optionMenu -q -itemListLong $menu`;
+	for ($item in $items)
+	{
+		if (`menuItem -q -label $item` == $label)
+		{
+			$result =  $item;
+			break;
+		}
+	}
+	return $result;
+}
+
+proc string
+RH_FindOptionMenuItem_ByAnnotation(string $menu, string $annotation)
+{
+	string $result;
+	string $items[] = `optionMenu -q -itemListLong $menu`;
+	for ($item in $items)
+	{
+		if (`menuItem -q -ann $item` == $annotation)
+		{
+			$result =  $item;
+			break;
+		}
+	}
+	return $result;
+}
+
+proc string
+RH_FindOptionMenuGrpItem_ByLabel(string $menu, string $label)
+{
+	string $result;
+	string $items[] = `optionMenuGrp -q -itemListLong $menu`;
+	for ($item in $items)
+	{
+		if (`menuItem -q -label $item` == $label)
+		{
+			$result =  $item;
+			break;
+		}
+	}
+	return $result;
+}
+
+global proc string
+RH_FindOptionMenuGrpItem_ByAnnotation(string $menu, string $annotation)
+{
+	string $result;
+	string $items[] = `optionMenuGrp -q -itemListLong $menu`;
+	for ($item in $items)
+	{
+		if (`menuItem -q -ann $item` == $annotation)
+		{
+			$result =  $item;
+			break;
+		}
+	}
+	return $result;
+}
+
+// Sets the OptionMenu using the annotation field
+global proc
+RH_SetOptionMenuValue_ByAnnotation(string $menu, string $annotation)
+{
+	string $item = RH_FindOptionMenuItem_ByAnnotation($menu, $annotation);
+	if (size($item)>0)
+		optionMenu -e -value `menuItem -q -label $item` $menu;
+	else
+		warning ((VCP_uiRes("m_RH_VCP.kGeneral_CantFindMenuItem")) + " " + $annotation);
+}
+
+// Returns the annotation field of the active menuitem in an OptionMenu
+global proc string
+RH_GetOptionMenuItemAnnotation(string $menu)
+{
+	string $result;
+	string $label = `optionMenu -q -value $menu`;
+	string $item = RH_FindOptionMenuItem_ByLabel($menu, $label);
+	if (size($item)>0)
+		$result = `menuItem -q -ann $item`;
+	else
+		warning ((VCP_uiRes("m_RH_VCP.kGeneral_CantFindMenuItem")) + " " + $label);
+	return $result;
+}
+
+// Sets the OptionMenuGrp using the annotation field
+global proc
+RH_SetOptionMenuGrpValue_ByAnnotation(string $menu, string $annotation)
+{
+	string $item = RH_FindOptionMenuGrpItem_ByAnnotation($menu, $annotation);
+	if (size($item)>0)
+		optionMenuGrp -e -value `menuItem -q -label $item` $menu;
+	else
+		warning ((VCP_uiRes("m_RH_VCP.kGeneral_CantFindMenuItem")) + " " + $annotation);
+}
+
+// Returns the annotation field of the active menuitem in an OptionMenuGrp
+global proc string
+RH_GetOptionMenuGrpItemAnnotation(string $menu)
+{
+	string $result;
+	string $label = `optionMenuGrp -q -value $menu`;
+	string $item = RH_FindOptionMenuGrpItem_ByLabel($menu, $label);
+	if (size($item)>0)
+		$result = `menuItem -q -ann $item`;
+	else
+		warning ((VCP_uiRes("m_RH_VCP.kGeneral_CantFindMenuItem")) + " " + $label);
+	return $result;
+}
+
+global proc
+RH_SetVarFromOptionMenu_ByAnnotation(string $control, string $optionVarName)
+{
+	string $label = `optionMenu -query -value $control`;
+	string $item = RH_FindOptionMenuItem_ByLabel($control, $label);
+	if (size($item)>0)
+		optionVar -stringValue $optionVarName `menuItem -q -ann $item`;	
+}
+
+global proc
+VCP_SetVarFromOptionMenuGrp_ByAnnotation(string $control, string $optionVarName)
+{
+	string $label = `optionMenuGrp -query -value $control`;
+	string $item = RH_FindOptionMenuGrpItem_ByLabel($control, $label);
+	if (size($item)>0)
+		optionVar -stringValue $optionVarName `menuItem -q -ann $item`;	
+}
+
+global proc
+VCP_DockToChannelBox()
+{
+	global int    $gChannelsLayersWidth;
+
+	int $hasDockControl = `exists("dockControl")`;
+
+	if (!$hasDockControl)
+	{
+		if (`optionVar -q RH_VCP_DockChannelBox` == 0)
+		{
+			optionVar -intValue RH_VCP_ChannelBoxWidth $gChannelsLayersWidth;
+			optionVar -intValue RH_VCP_DockChannelBox 1;
+		}
+		evalDeferred("VCP_Reboot();");
+	}
+	else
+	{
+		dockControl -e -floating 0 RH_Dock_VertexChameleonMain1x;
+		optionVar -intValue RH_VCP_DockChannelBox 1;
+	}
+}
+
+global proc
+VCP_UndockFromChannelBox()
+{
+	int $hasDockControl = `exists("dockControl")`;
+
+	if (!$hasDockControl)
+	{
+		if (`optionVar -q RH_VCP_DockChannelBox` != 0)
+		{
+			if (exists("setChannelsLayersWidth"))
+			{
+				setChannelsLayersWidth(`optionVar -q RH_VCP_ChannelBoxWidth`);
+			}
+			string $mayaVersion = `about -version`;
+			if (startsWith($mayaVersion, "2011"))
+			{
+				// We have to wrap this in a string as Maya detects the code as having in correct number of arguments
+				string $cmd = "showChannelsLayers(0);";
+				eval($cmd);
+			}
+			else
+			{
+				// We have to wrap this in a string as Maya detects the code as having in correct number of arguments
+				string $cmd = "showChannelsLayers(\"Channel Box / Layer Editor\", 0);";
+				eval($cmd);
+			}
+			optionVar -intValue RH_VCP_DockChannelBox 0;
+		}
+		evalDeferred("VCP_Reboot();");
+	}
+	else
+	{
+		dockControl -e -floating 1 RH_Dock_VertexChameleonMain1x;
+		optionVar -intValue RH_VCP_DockChannelBox 0;
+	}
+}
+
+global proc
+VCP_Load()
+{
+	if (`exists loadPluginLanguageResources`)
+	{
+		loadPluginLanguageResources("VertexChameleon", "RH_VCP_Base.res.mel");
+		loadPluginLanguageResources("VertexChameleon", "RH_VCP.res.mel");
+	}
+	else
+	{
+		source "RH_VCP_Base.res.mel";
+		source "RH_VCP.res.mel";
+	}
+
+	string $pluginName = `VCP_GetPluginName("VertexChameleon")`;
+	int $isLoaded = `pluginInfo -query -loaded -command $pluginName`;
+	if (!$isLoaded)
+	{
+		print "VCP: Loading Module.\n";
+	
+		//evalDeferred("autoLoadPlugin \"\" " + $pluginName + " " + $pluginName);
+		eval("autoLoadPlugin \"\" " + $pluginName + " " + $pluginName);
+
+		print "VCP: Finished Loading Module.\n";
+	}
+}
+
+global proc
+VCP_Unload()
+{
+	string $pluginName = `VCP_GetPluginName("VertexChameleon")`;
+	int $isLoaded = `pluginInfo -query -loaded -command $pluginName`;
+	if ($isLoaded)
+	{
+		print "VCP: Unloading Module.\n";
+		unloadPlugin -force $pluginName;
+	}
+}
+
+global proc
+VCP_AddToShelf()
+{
+    global string $gShelfTopLevel;
+    if (`tabLayout -exists $gShelfTopLevel`) 
+    {
+		string $currentShelf = `tabLayout -query -selectTab $gShelfTopLevel`;
+		setParent $currentShelf;
+
+		//  Create the shelf button on the current shelf.
+		shelfButton 
+			-label (VCP_uiRes("m_RH_VCP.kGeneral_ShelfLaunch"))
+			-command "RH_VertexChameleon"
+			-annotation (VCP_uiRes("m_RH_VCP.kGeneral_ShelfLaunch"))
+			-image1 "VCPIcon.xpm"
+			-highlightImage "VCPIconOver.xpm"
+			-style `shelfLayout -query -style $currentShelf`
+			-width `shelfLayout -query -cellWidth $currentShelf`
+			-height `shelfLayout -query -cellHeight $currentShelf`;
+    }
+}
+
+global proc
+VCP_ResetSettings()
+{
+	VCP_CreateOptions(true);
+	evalDeferred("VCP_Reboot();");
+}
+
+global proc
+VCP_Reboot()
+{
+	VCP_Unload();
+
+	if (`window -ex RH_VertexPolyColourWindow`) 
+		deleteUI -window "RH_VertexPolyColourWindow";
+
+	if (`layout -ex RH_VCP_MainFormLayout`)
+		deleteUI -layout "RH_VCP_MainFormLayout";
+
+	if (`window -ex RH_VCP_ColourSwatchWindow`) 
+	{
+		deleteUI -window "RH_VCP_ColourSwatchWindow";
+		VCP_ShowColourSwatch();
+	}
+
+	RH_VertexChameleon();
+}
+
+global proc string
+VCP_CaptureObjectSelectionModeComponents()
+{
+	string $command;
+
+	// The select type:
+	$command = ( $command + "selectType -ocm"
+
+	// component selection masks
+
+		+" -cv " + `selectType -q -ocm -cv`
+		+" -vertex " + `selectType -q -ocm -vertex`
+		+" -polymeshUV " + `selectType -q -ocm -polymeshUV`
+		+" -polymeshEdge " + `selectType -q -ocm -polymeshEdge`		
+		+" -facet " + `selectType -q -ocm -facet`
+		+" -subdivMeshFace " + `selectType -q -ocm -subdivMeshFace`
+		+"; "
+	);
+
+	return $command;
+}
+
+
+global proc 
+VCP_VertColorDisplay(int $displayMode)
+{
+	// displayTextures  = 	on/off
+	// renderMode  = 	hwRender_OpenGL_Renderer/base_OpenGL_Renderer
+	// lightMode  = 			all/none/selected
+	// colorChannel  = 		emmision/abientDiffuse
+	// materialBlend  = 		overwrite/multiply
+
+	string $oldSelection[] = `ls -selection`;
+	string $oldHilight[] = `ls -hilite`;
+	string $oldSelectionMask = `currentSelectionMask`;
+
+	// If we're in object mode, we need to save the selection state for components
+	if (`selectMode -q -object`)
+	{
+		$oldSelectionMask += VCP_CaptureObjectSelectionModeComponents();
+	}
+	
+	// get list of all modeling panels
+	string $panelList[] = `getPanel -type modelPanel`;
+
+	// get list of selected meshes and lights
+	string $selected[] = `ls -long -sl -type "transform"`;
+	string $selectedShapes[] = `listRelatives -fullPath -type shape $selected`;
+	
+	select -r $selectedShapes;
+	string $meshes[] = `ls -long -sl -type "mesh"`;
+	string $lights[] = `ls -long -sl -type "light"`;
+	
+	//works exclusivly - either disp color on all meshes or none		
+	if (`size $meshes` ==  0)
+		{
+		$meshes = `ls -type mesh`;
+		print ("All Meshes : ");
+		}	
+	else
+		{
+		print ("Selected Meshes : ");
+		//first disable vert color display for all meshes
+		//for some strange reason the attr has to be touched directly in order for HQ mode to refresh correctly	
+		for ($mesh in `ls -type mesh`)
+			setAttr ($mesh+".displayColors") 0;
+		//select `ls -type mesh`;
+		//polyOptions -cs 0;	
+		}
+		
+		
+	//select polys to change
+		switch ($displayMode)
+			
+		{
+		
+		case 0:	//Reset all to default
+				//
+				//Turn off Vertex Color display and reset panels to default
+	
+				//select -r $meshes;
+				for ($mesh in $meshes)
+				{
+					polyOptions -cs 0 -colorMaterialChannel "ambientDiffuse" -materialBlend "overwrite" -activeObjects $mesh;
+				}
+
+					
+				//Check shading, textures and lighting for each modeling panel
+				for ($currentPanel in $panelList)   
+					modelEditor -edit 
+						-displayAppearance "smoothShaded" 
+						-displayTextures 1
+						-rendererName "base_OpenGL_Renderer"
+						-displayLights "default" 
+						$currentPanel;					
+				break;
+
+				
+		case 1:	//Vert Color Only
+				//
+				//Set view mode to Emission and blend to Overwrite
+				//Set panels to view no lights with textures turned off
+	
+				//select -r $meshes;
+				for ($mesh in $meshes)
+				{
+					polyOptions -cs 1 -colorMaterialChannel "emission" -materialBlend "overwrite" -activeObjects;
+				}
+
+					
+				//Check shading, textures and lighting for each modeling panel
+				for ($currentPanel in $panelList)   
+					modelEditor -edit 
+						-displayAppearance "smoothShaded" 
+						-displayTextures off
+						-rendererName "base_OpenGL_Renderer"
+						-displayLights "none" 
+						$currentPanel;
+				break;
+	
+	
+		case 2:	//Vertex Color and Textures
+				//
+				//Set view mode to Emission and blend to Overwrite
+				//Set panels to view no lights with textures turned on
+	
+				//select -r $meshes;
+				for ($mesh in $meshes)
+				{
+					polyOptions -cs 1 -colorMaterialChannel "emission" -materialBlend "overwrite" -activeObjects;
+				}
+
+				
+				//Check shading, textures and lighting for each modeling panel
+				for ($currentPanel in $panelList)   
+					modelEditor -edit 
+						-displayAppearance "smoothShaded" 
+						-displayTextures 1
+						-rendererName "base_OpenGL_Renderer"
+						-displayLights "none" 
+						$currentPanel;
+				break;
+				
+				
+		case 3:	//Display Vertex Color + Textures and Lights 
+				//
+				//Set view mode to AmbientDiffuse and blend to Multiply
+				//Set panels to view either all or default lighting with textures on
+	
+				string $lightMode;
+				
+				if (`size $lights` != 0)
+					$lightMode = "active";  //use selected lights
+				else
+					{
+					string $lights[] = `ls -type light`;
+					if (`size $lights` != 0)
+						$lightMode = "all";
+					else
+						$lightMode = "default";
+					}
+				
+				//select -r $meshes;
+				for ($mesh in $meshes)
+				{
+					polyOptions -cs 1 -colorMaterialChannel "ambientDiffuse" -materialBlend "multiply" -activeObjects;
+				}
+
+				//Check shading, textures and lighting for each modeling panel
+				for ($currentPanel in $panelList)   
+					modelEditor -edit 
+						-displayAppearance "smoothShaded" 
+						-displayTextures 1
+						-rendererName "base_OpenGL_Renderer"
+						-displayLights $lightMode 
+						$currentPanel;				
+				break;	
+		}
+	
+	//reselect original selection
+	select -clear;
+	hilite -replace $oldHilight;
+	eval($oldSelectionMask);
+	select -r $oldSelection;
+}
+
+proc
+VCP_CreateFrame_License()
+{
+	frameLayout -label (VCP_uiRes("m_RH_VCP.kLicense_Title"))
+				-labelIndent 4
+				-borderStyle "etchedIn"
+				-collapsable true
+				-marginWidth 4
+				-marginHeight 4;
+		columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 4;
+
+			string $licType = "Freeware";		
+			textField -editable false -text $licType;
+			
+		setParent ..;
+	setParent ..;	
+}
+
+
+proc 
+VCP_CreateFrame_Credits()
+{
+	frameLayout -label (VCP_uiRes("m_RH_VCP.kCredits_Title"))
+				-labelIndent 4
+				-borderStyle "etchedIn"
+				-collapsable true
+				-marginWidth 4
+				-marginHeight 4;
+		columnLayout -columnAlign "left" -adjustableColumn true -rowSpacing 0 -columnAttach "both" 0;
+
+			iconTextButton -align "left" -style "iconOnly" -image1 "RenderHeads1.xpm" -highlightImage "RenderHeads2.xpm" -label "RenderHeads" -command ("showHelp -absolute \"http://www.renderheads.com/\"");
+			text -align "left" -label (VCP_uiRes("m_RH_VCP.kCredits_SoftwareDevelopment"));
+			RH_VCP_BlankSeparator();
+			RH_VCP_BlankSeparator();
+			RH_VCP_BlankSeparator();
+			text -align "left" -label "Special thanks: David Berenguer Viaplana";
+			RH_VCP_BlankSeparator();
+			RH_VCP_BlankSeparator();
+			text -align "left" -label "Email: plugins@renderheads.com";
+
+		setParent ..;
+	setParent ..;	
+}
+
+global proc
+VCP_LoadLocalDocs()
+{
+	string $manualPath = VCP_GetModulePath("VertexChameleon") + "docs/manualHTML/index.html";
+	eval("showHelp -absolute \"" + $manualPath + "\"");
+}
+
+proc
+VCP_CreateFrame_Links()
+{
+	frameLayout -label (VCP_uiRes("m_RH_VCP.kLinks_Title"))
+				-labelIndent 4
+				-borderStyle "etchedIn"
+				-collapsable true
+				-marginWidth 4
+				-marginHeight 4;
+
+		columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 4;
+
+			string $pluginName = `VCP_GetPluginName("VertexChameleon")`;
+			int $isLoaded = `pluginInfo -query -loaded -command $pluginName`;
+			if ($isLoaded > 0)
+			{
+				button -label (VCP_uiRes("m_RH_VCP.kLinks_DocsLocal")) -command "VCP_LoadLocalDocs";
+			}
+			button -label (VCP_uiRes("m_RH_VCP.kLinks_DocsInternet")) -command ("showHelp -absolute \"http://www.renderheads.com/portfolio/VertexChameleon/docs/\"");
+			RH_VCP_BlankSeparator();
+			button -label (VCP_uiRes("m_RH_VCP.kLinks_VCWebsite"))  -command ("showHelp -absolute \"http://www.renderheads.com/portfolio/VertexChameleon/\"");
+			button -label (VCP_uiRes("m_RH_VCP.kLinks_PluginForum")) -command ("showHelp -absolute \"http://www.renderheads.com/forum/viewforum.php?f=5\"");
+
+		setParent ..;
+
+	setParent ..;
+}
+
+proc
+VCP_CreateFrame_Plugin()
+{
+	frameLayout -label (VCP_uiRes("m_RH_VCP.kPluginInfo_Title"))
+				-labelIndent 4
+				-borderStyle "etchedIn"
+				-collapsable true
+				-collapse true
+				-marginWidth 4
+				-marginHeight 4;
+		columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 4;
+
+			string $pluginName = `VCP_GetPluginName("VertexChameleon")`;
+			int $isLoaded = `pluginInfo -query -loaded -command $pluginName`;
+			string $vendor, $path, $buildtime, $version;
+			if ($isLoaded > 0)
+			{
+				$vendor = `pluginInfo -query -vendor -command $pluginName`;
+				$path = `pluginInfo -query -path -command $pluginName`;
+
+				string $buffer[];
+				string $versiondata = `pluginInfo -query -version -command $pluginName`;
+				$numTokens = `tokenize $versiondata "," $buffer`;
+				if ($numTokens == 2)
+				{
+					$version = $buffer[0];
+					$buildtime = $buffer[1];
+				}
+			}
+			else
+			{
+				$version = (VCP_uiRes("m_RH_VCP.kPluginInfo_NotLoaded"));
+			}
+		
+			rowLayout -numberOfColumns 2 -adjustableColumn 2 -columnWidth2 45 175 -columnAlign 1 "right";
+				text -label (VCP_uiRes("m_RH_VCP.kPluginInfo_Name")) -width 45;
+				textField -editable false -text $pluginName;
+			setParent ..;
+			rowLayout -numberOfColumns 2 -adjustableColumn 2 -columnWidth2 45 175 -columnAlign 1 "right";
+				text -label (VCP_uiRes("m_RH_VCP.kPluginInfo_Version")) -width 45;
+				textField -editable false -text $version;
+			setParent ..;
+			rowLayout -numberOfColumns 2 -adjustableColumn 2 -columnWidth2 45 175 -columnAlign 1 "right";
+				text -label (VCP_uiRes("m_RH_VCP.kPluginInfo_Built")) -width 45;
+				textField -editable false -text $buildtime;
+			setParent ..;
+			rowLayout -numberOfColumns 2 -adjustableColumn 2 -columnWidth2 45 175 -columnAlign 1 "right";
+				text -label (VCP_uiRes("m_RH_VCP.kPluginInfo_Vendor")) -width 45;
+				textField -editable false -text $vendor;
+			setParent ..;
+			rowLayout -numberOfColumns 2 -adjustableColumn 2 -columnWidth2 45 175 -columnAlign 1 "right";
+				text -label (VCP_uiRes("m_RH_VCP.kPluginInfo_Path")) -width 45;
+				textField -editable false -text $path;
+			setParent ..;
+		setParent ..;
+	setParent ..;	
+}
+
+global proc
+VCP_ChangeColourUnitRange(int $normalised)
+{
+	optionVar -intValue RH_VCP_NormalisedColours $normalised;
+	evalDeferred("VCP_Reboot();");
+}
+
+proc
+VCP_CreateFrame_Settings()
+{
+	frameLayout -label (VCP_uiRes("m_RH_VCP.kUISettings_Title"))
+				-labelIndent 4
+				-borderStyle "etchedIn"
+				-collapsable true
+				-marginWidth 4
+				-marginHeight 4;
+		columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 4;
+
+			string $OM_channelRange = `optionMenu -label (VCP_uiRes("m_RH_VCP.kUISettings_ChannelRange"))`;
+				menuItem -label "0 to 1";
+				menuItem -label "0 to 255";
+
+			$AddMainMenu = `checkBox -align left -label (VCP_uiRes("m_RH_VCP.kUISettings_AddMenu"))`;
+
+			button -label (VCP_uiRes("m_RH_VCP.kUISettings_AddShelf")) -command ("VCP_AddToShelf");
+			string $BN_dock = "";
+			string $BN_tear = "";
+			if (!exists("dockControl"))
+			{
+				if (`optionVar -q RH_VCP_DockChannelBox` == 0)
+					$BN_dock = `button -label (VCP_uiRes("m_RH_VCP.kUISettings_DockChannelBox"))`;
+				else
+					$BN_tear = `button -label (VCP_uiRes("m_RH_VCP.kUISettings_TearOff"))`;
+			}
+		setParent ..;
+	setParent ..;
+
+	frameLayout -label (VCP_uiRes("m_RH_VCP.kOpSettings_Title"))
+				-labelIndent 4
+				-borderStyle "etchedIn"
+				-collapsable true
+				-marginWidth 4
+				-marginHeight 4;
+		columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 4;
+			$PreserveVertexFaceColoursCheckbox = `checkBox -align left -label (VCP_uiRes("m_RH_VCP.kOpSettings_PreserveVertexFace")) -value true -onCommand ("optionVar -intValue \"RH_VCP_ComponentOverride\" 3") -offCommand ("optionVar -intValue \"RH_VCP_ComponentOverride\" 2")`;
+			RH_VCP_BlankSeparator();
+			$SyncVertexPaintColourCheckbox = `checkBox -align left -label (VCP_uiRes("m_RH_VCP.kOpSettings_SyncPaint")) -value false -onCommand ("optionVar -intValue \"RH_VCP_SyncVertexPaintColour\" 1") -offCommand ("optionVar -intValue \"RH_VCP_SyncVertexPaintColour\" 0")`;
+			RH_VCP_BlankSeparator();
+			$VerboseCheckbox = `checkBox -align left -label (VCP_uiRes("m_RH_VCP.kOpSettings_VerboseOutput")) -value false -onCommand ("optionVar -intValue \"RH_VCP_Verbose\" 1") -offCommand ("optionVar -intValue \"RH_VCP_Verbose\" 0")`;
+			$ResetSettingsCheckbox = `checkBox -align left -label (VCP_uiRes("m_RH_VCP.kOpSettings_ResetStartup")) -value false -onCommand ("optionVar -intValue \"RH_VCP_ResetOnStart\" 1") -offCommand ("optionVar -intValue \"RH_VCP_ResetOnStart\" 0")`;
+			button -label (VCP_uiRes("m_RH_VCP.kOpSettings_ResetDefaults")) -command ("VCP_ResetSettings();");
+		setParent ..;
+	setParent ..;
+
+	// Commands
+	{
+		string $cmd;
+		$cmd = "VCP_ChangeColourUnitRange (1==`optionMenu -q -select " + $OM_channelRange + "`);";
+		optionMenu -edit -changeCommand $cmd $OM_channelRange;
+
+		if (!exists("dockControl"))
+		{
+			if (`optionVar -q RH_VCP_DockChannelBox` == 1)
+			{
+				$cmd = "VCP_UndockFromChannelBox();";
+				button -e -command $cmd $BN_tear;
+			}
+			else
+			{
+				$cmd = "VCP_DockToChannelBox();";
+				button -e -command $cmd $BN_dock;
+			}
+		}
+
+		checkBox -e -onCommand ("optionVar -intValue \"RH_VCP_AddMainMenu\" 1; VCP_Menu_Add;") $AddMainMenu;
+		checkBox -e -offCommand ("optionVar -intValue \"RH_VCP_AddMainMenu\" 0; VCP_Menu_Remove;") $AddMainMenu;
+	}
+
+	// Settings
+	{
+		if (`optionVar -query RH_VCP_NormalisedColours` == 1)
+		{
+			optionMenu -e -select 1 $OM_channelRange;
+		}
+		else
+		{
+			optionMenu -e -select 2 $OM_channelRange;
+		}
+
+		if (`optionVar -query "RH_VCP_ResetOnStart"` == 1)
+		{
+			checkBox -e -value true $ResetSettingsCheckbox;
+		}
+		else
+		{
+			checkBox -e -value false $ResetSettingsCheckbox;
+		}
+
+		if (`optionVar -query "RH_VCP_Verbose"` == 1)
+		{
+			checkBox -e -value true $VerboseCheckbox;
+		}
+		else
+		{
+			checkBox -e -value false $VerboseCheckbox;
+		}
+
+		if (`optionVar -query "RH_VCP_AddMainMenu"` == 1)
+		{
+			checkBox -e -value true $AddMainMenu;
+		}
+		else
+		{
+			checkBox -e -value false $AddMainMenu;
+		}
+
+		if (`optionVar -query "RH_VCP_ComponentOverride"` == 3)
+		{
+			checkBox -e -value true $PreserveVertexFaceColoursCheckbox;
+		}
+		else
+		{
+			checkBox -e -value false $PreserveVertexFaceColoursCheckbox;
+		}
+
+		if (`optionVar -query "RH_VCP_SyncVertexPaintColour"` == 1)
+		{
+			checkBox -e -value true $SyncVertexPaintColourCheckbox;
+		}
+		else
+		{
+			checkBox -e -value false $SyncVertexPaintColourCheckbox;
+		}
+	}
+}
+
+proc string
+VCP_CreateTab_About()
+{
+	string $layout = `scrollLayout -horizontalScrollBarThickness 0 -childResizable true`;
+        columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 0 -columnAttach "both" 0;
+
+			VCP_CreateFrame_Credits;
+			VCP_CreateFrame_License;
+			VCP_CreateFrame_Plugin;
+			VCP_CreateFrame_Links;
+		
+		setParent ..;
+	setParent ..;
+	return $layout;
+}
+
+proc string
+VCP_CreateTab_Settings()
+{
+	string $layout = `scrollLayout -horizontalScrollBarThickness 0 -childResizable true`;
+        columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 0 -columnAttach "both" 0;
+
+		VCP_CreateFrame_Settings;
+		
+		setParent ..;
+	setParent ..;
+	return $layout;
+}
+
+global proc
+VCP_CreateOptions(int $force)
+{
+	global string $VCP_FINAL_LAYER_NAME;
+	global float $VCP_Apply_HSV[];
+	global float $VCP_Apply_RGBA[];
+	global float $VCP_paint[];
+	global string $RH_VCP_OldWireDisplay;
+
+	// Only initialise these variables if they don't exist
+	if (!`optionVar -exists "RH_VCP_ResetOnStart"`)
+		optionVar -intValue "RH_VCP_ResetOnStart" 0;
+	if (!`optionVar -exists "RH_VCP_ActiveTab"`)
+        optionVar -stringValue "RH_VCP_ActiveTab" "About";
+
+	// Settings
+	if (`optionVar -q "RH_VCP_ResetOnStart"` == 1)
+	{
+		$force = 1;
+	}
+	if (!`optionVar -exists "RH_VCP_AddMainMenu"` || $force)
+        optionVar -intValue "RH_VCP_AddMainMenu" 1;
+	if (!`optionVar -exists "RH_VCP_DockChannelBox"` || $force)
+        optionVar -intValue "RH_VCP_DockChannelBox" 0;
+	if (!`optionVar -exists "RH_VCP_ChannelBoxWidth"` || $force)
+        optionVar -intValue "RH_VCP_ChannelBoxWidth" 134;
+	if (!`optionVar -exists "RH_VCP_Verbose"` || $force)
+        optionVar -intValue "RH_VCP_Verbose" 0;
+	if (!`optionVar -exists "RH_VCP_NormalisedColours"` || $force)
+        optionVar -intValue "RH_VCP_NormalisedColours" 1;
+	if (!`optionVar -exists "RH_VCP_ComponentOverride"` || $force)
+        optionVar -intValue "RH_VCP_ComponentOverride" 3;
+	if (!`optionVar -exists "RH_VCP_ChannelMask"` || $force)
+		optionVar -stringValue "RH_VCP_ChannelMask" "RGBA";
+
+	// Apply RGBA
+	if (!`optionVar -exists "RH_VCP_RGBARainbow"` || $force)
+        optionVar -intValue "RH_VCP_RGBARainbow" 0;
+
+	// Apply Random Components
+	if (!`optionVar -exists "RH_VCP_ApplyRandom_Red"` || $force)
+		optionVar -floatValue "RH_VCP_ApplyRandom_Red" 0.0;
+	if (!`optionVar -exists "RH_VCP_ApplyRandom_Green"` || $force)
+		optionVar -floatValue "RH_VCP_ApplyRandom_Green" 0.0;
+	if (!`optionVar -exists "RH_VCP_ApplyRandom_Blue"` || $force)
+		optionVar -floatValue "RH_VCP_ApplyRandom_Blue" 0.0;
+	if (!`optionVar -exists "RH_VCP_ApplyRandom_Alpha"` || $force)
+		optionVar -floatValue "RH_VCP_ApplyRandom_Alpha" 0.0;
+	if (!`optionVar -exists "RH_VCP_ApplyRandom_Hue"` || $force)
+		optionVar -floatValue "RH_VCP_ApplyRandom_Hue" 0.0;
+	if (!`optionVar -exists "RH_VCP_ApplyRandom_Sat"` || $force)
+		optionVar -floatValue "RH_VCP_ApplyRandom_Sat" 0.0;
+	if (!`optionVar -exists "RH_VCP_ApplyRandom_Val"` || $force)
+		optionVar -floatValue "RH_VCP_ApplyRandom_Val" 0.2;
+	if (!`optionVar -exists "RH_VCP_ApplyRandom_BlendAmount"` || $force)
+		optionVar -floatValue "RH_VCP_ApplyRandom_BlendAmount" 100.0;
+	if (!`optionVar -exists "RH_VCP_ApplyRandom_BlendMode"` || $force)
+		optionVar -stringValue "RH_VCP_ApplyRandom_BlendMode" "Replace";
+
+	// Ambient Occlusion Bake
+	if (!`optionVar -exists "RH_VCP_AOBake_NumRays"` || $force)
+        optionVar -intValue "RH_VCP_AOBake_NumRays" 64;
+	if (!`optionVar -exists "RH_VCP_AOBake_Falloff"` || $force)
+		optionVar -floatValue "RH_VCP_AOBake_Falloff" 0.0;
+	if (!`optionVar -exists "RH_VCP_AOBake_BlendMode"` || $force)
+		optionVar -stringValue "RH_VCP_AOBake_BlendMode" "Replace";
+	if (!`optionVar -exists "RH_VCP_LightBake_Shadows"` || $force)
+        optionVar -intValue "RH_VCP_LightBake_Shadows" 0;
+	
+	// Frames Collapse
+	if (!`optionVar -exists "RH_VCP_FrameApplyColour"` || $force)
+        optionVar -intValue "RH_VCP_FrameApplyColour" 0;
+	if (!`optionVar -exists "RH_VCP_FrameReplaceInner"` || $force)
+        optionVar -intValue "RH_VCP_FrameReplaceInner" 0;
+	if (!`optionVar -exists "RH_VCP_FrameApplyBlend"` || $force)
+        optionVar -intValue "RH_VCP_FrameApplyBlend" 1;
+	if (!`optionVar -exists "RH_VCP_FrameAdjustHSV"` || $force)
+        optionVar -intValue "RH_VCP_FrameAdjustHSV" 0;
+	if (!`optionVar -exists "RH_VCP_FrameAdjustBC"` || $force)
+        optionVar -intValue "RH_VCP_FrameAdjustBC" 0;
+	if (!`optionVar -exists "RH_VCP_FrameAdjustContrast"` || $force)
+        optionVar -intValue "RH_VCP_FrameAdjustContrast" 1;
+	if (!`optionVar -exists "RH_VCP_FrameAdjustInvert"` || $force)
+        optionVar -intValue "RH_VCP_FrameAdjustInvert" 1;
+	if (!`optionVar -exists "RH_VCP_FrameAdjustLevels"` || $force)
+        optionVar -intValue "RH_VCP_FrameAdjustLevels" 1;
+	if (!`optionVar -exists "RH_VCP_FrameAdjustNudge"` || $force)
+        optionVar -intValue "RH_VCP_FrameAdjustNudge" 1;
+	if (!`optionVar -exists "RH_VCP_FrameAdjustPosterize"` || $force)
+        optionVar -intValue "RH_VCP_FrameAdjustPosterize" 1;
+	if (!`optionVar -exists "RH_VCP_FrameAdjustRGBA"` || $force)
+        optionVar -intValue "RH_VCP_FrameAdjustRGBA" 0;
+	if (!`optionVar -exists "RH_VCP_FrameAdjustClamp"` || $force)
+        optionVar -intValue "RH_VCP_FrameAdjustClamp" 1;
+	if (!`optionVar -exists "RH_VCP_FrameAdjustSaturate"` || $force)
+        optionVar -intValue "RH_VCP_FrameAdjustSaturate" 1;
+	if (!`optionVar -exists "RH_VCP_FrameFilters"` || $force)
+        optionVar -intValue "RH_VCP_FrameFilters" 1;
+	if (!`optionVar -exists "RH_VCP_FrameRandomise"` || $force)
+        optionVar -intValue "RH_VCP_FrameRandomise" 1;
+	if (!`optionVar -exists "RH_VCP_FrameApplyRandom"` || $force)
+        optionVar -intValue "RH_VCP_FrameApplyRandom" 1;
+	if (!`optionVar -exists "RH_VCP_Frame3DTexture"` || $force)
+        optionVar -intValue "RH_VCP_Frame3DTexture" 1;
+	if (!`optionVar -exists "RH_VCP_FrameChannelSwap"` || $force)
+        optionVar -intValue "RH_VCP_FrameChannelSwap" 1;
+	if (!`optionVar -exists "RH_VCP_FrameChannelSwapColourSet"` || $force)
+        optionVar -intValue "RH_VCP_FrameChannelSwapColourSet" 1;
+	if (!`optionVar -exists "RH_VCP_FrameApplyGradient"` || $force)
+        optionVar -intValue "RH_VCP_FrameApplyGradient" 1;
+	if (!`optionVar -exists "RH_VCP_FrameMentalRayBaking"` || $force)
+        optionVar -intValue "RH_VCP_FrameMentalRayBaking" 1;
+	
+
+	// Apply Colour
+	if (!`optionVar -exists "RH_VCP_ApplyColourR"` || $force)
+		optionVar -floatValue "RH_VCP_ApplyColourR" 0.0;
+	if (!`optionVar -exists "RH_VCP_ApplyColourG"` || $force)
+		optionVar -floatValue "RH_VCP_ApplyColourG" 0.0;
+	if (!`optionVar -exists "RH_VCP_ApplyColourB"` || $force)
+		optionVar -floatValue "RH_VCP_ApplyColourB" 0.0;
+	if (!`optionVar -exists "RH_VCP_ApplyColourA"` || $force)
+		optionVar -floatValue "RH_VCP_ApplyColourA" 1.0;
+	if (!`optionVar -exists "RH_Col_BlendAmount"` || $force)
+		optionVar -floatValue "RH_Col_BlendAmount" 100.0;
+	if (!`optionVar -exists "RH_Col_BlendMode"` || $force)
+		optionVar -stringValue "RH_Col_BlendMode" "Replace";
+	if (!`optionVar -exists "RH_Col_AutoApply"` || $force)
+		optionVar -intValue "RH_Col_AutoApply" 0;
+	if (!`optionVar -exists "RH_Col_AutoApplyChannel"` || $force)
+		optionVar -intValue "RH_Col_AutoApplyChannel" 0;
+	if (!`optionVar -exists "RH_Col_AutoSelection"` || $force)
+		optionVar -intValue "RH_Col_AutoSelection" 0;
+	if (!`optionVar -exists "RH_VCP_SyncVertexPaintColour"` || $force)
+		optionVar -intValue "RH_VCP_SyncVertexPaintColour" 1;
+
+	// Channel Copy/Swap
+	if (!`optionVar -exists "RH_VCP_ChannelCopySrc"` || $force)
+		optionVar -stringValue "RH_VCP_ChannelCopySrc" "Alpha";
+	if (!`optionVar -exists "RH_VCP_ChannelCopyDst"` || $force)
+		optionVar -stringValue "RH_VCP_ChannelCopyDst" "Value";
+	optionVar -intValue "RH_VCP_ChannelCopyBetweenSets" 0;
+
+	// Filters
+	if (!`optionVar -exists "RH_VCP_Filter_BlendAmount"` || $force)
+		optionVar -floatValue "RH_VCP_Filter_BlendAmount" 100.0;
+	if (!`optionVar -exists "RH_VCP_Filter_BlendMode"` || $force)
+		optionVar -stringValue "RH_VCP_Filter_BlendMode" "Replace";
+
+	// Nudge
+	if (!`optionVar -exists "RH_VCP_NudgeR"` || $force)
+		optionVar -floatValue "RH_VCP_NudgeR" 5;
+	if (!`optionVar -exists "RH_VCP_NudgeG"` || $force)
+		optionVar -floatValue "RH_VCP_NudgeG" 5;
+	if (!`optionVar -exists "RH_VCP_NudgeB"` || $force)
+		optionVar -floatValue "RH_VCP_NudgeB" 5;
+	if (!`optionVar -exists "RH_VCP_NudgeYellow"` || $force)
+		optionVar -floatValue "RH_VCP_NudgeYellow" 5;
+	if (!`optionVar -exists "RH_VCP_NudgeCyan"` || $force)
+		optionVar -floatValue "RH_VCP_NudgeCyan" 5;
+	if (!`optionVar -exists "RH_VCP_NudgePurple"` || $force)
+		optionVar -floatValue "RH_VCP_NudgePurple" 5;
+	if (!`optionVar -exists "RH_VCP_NudgeAlpha"` || $force)
+		optionVar -floatValue "RH_VCP_NudgeAlpha" 5;
+	if (!`optionVar -exists "RH_VCP_NudgeWhite"` || $force)
+		optionVar -floatValue "RH_VCP_NudgeWhite" 5;
+	if (!`optionVar -exists "RH_VCP_NudgeHue"` || $force)
+		optionVar -floatValue "RH_VCP_NudgeHue" 5;
+	if (!`optionVar -exists "RH_VCP_NudgeSat"` || $force)
+		optionVar -floatValue "RH_VCP_NudgeSat" 5;
+	if (!`optionVar -exists "RH_VCP_NudgeVal"` || $force)
+		optionVar -floatValue "RH_VCP_NudgeVal" 5;
+	if (!`optionVar -exists "RH_VCP_NudgeBri"` || $force)
+		optionVar -floatValue "RH_VCP_NudgeBri" 5;
+	if (!`optionVar -exists "RH_VCP_NudgeCon"` || $force)
+		optionVar -floatValue "RH_VCP_NudgeCon" 5;
+	if (!`optionVar -exists "RH_VCP_NudgeBlur"` || $force)
+		optionVar -floatValue "RH_VCP_NudgeBlur" 100;
+	if (!`optionVar -exists "RH_VCP_NudgeDilate"` || $force)
+		optionVar -floatValue "RH_VCP_NudgeDilate" 100;
+
+	// Clamp
+	if (!`optionVar -exists "RH_VCP_ClampMinR"` || $force)
+		optionVar -floatValue "RH_VCP_ClampMinR" 0.0;
+	if (!`optionVar -exists "RH_VCP_ClampMaxR"` || $force)
+		optionVar -floatValue "RH_VCP_ClampMaxR" 1.0;
+	if (!`optionVar -exists "RH_VCP_ClampMinG"` || $force)
+		optionVar -floatValue "RH_VCP_ClampMinG" 0.0;
+	if (!`optionVar -exists "RH_VCP_ClampMaxG"` || $force)
+		optionVar -floatValue "RH_VCP_ClampMaxG" 1.0;
+	if (!`optionVar -exists "RH_VCP_ClampMinB"` || $force)
+		optionVar -floatValue "RH_VCP_ClampMinB" 0.0;
+	if (!`optionVar -exists "RH_VCP_ClampMaxB"` || $force)
+		optionVar -floatValue "RH_VCP_ClampMaxB" 1.0;
+	if (!`optionVar -exists "RH_VCP_ClampMinA"` || $force)
+		optionVar -floatValue "RH_VCP_ClampMinA" 0.0;
+	if (!`optionVar -exists "RH_VCP_ClampMaxA"` || $force)
+		optionVar -floatValue "RH_VCP_ClampMaxA" 1.0;
+	if (!`optionVar -exists "RH_VCP_ClampMinH"` || $force)
+		optionVar -floatValue "RH_VCP_ClampMinH" 0.0;
+	if (!`optionVar -exists "RH_VCP_ClampMaxH"` || $force)
+		optionVar -floatValue "RH_VCP_ClampMaxH" 360.0;
+	if (!`optionVar -exists "RH_VCP_ClampMinS"` || $force)
+		optionVar -floatValue "RH_VCP_ClampMinS" 0.0;
+	if (!`optionVar -exists "RH_VCP_ClampMaxS"` || $force)
+		optionVar -floatValue "RH_VCP_ClampMaxS" 1.0;
+	if (!`optionVar -exists "RH_VCP_ClampMinV"` || $force)
+		optionVar -floatValue "RH_VCP_ClampMinV" 0.0;
+	if (!`optionVar -exists "RH_VCP_ClampMaxV"` || $force)
+		optionVar -floatValue "RH_VCP_ClampMaxV" 1.0;
+
+	// Saturate
+	if (!`optionVar -exists "RH_VCP_SaturateMinR"` || $force)
+		optionVar -floatValue "RH_VCP_SaturateMinR" 0.0;
+	if (!`optionVar -exists "RH_VCP_SatuateMaxR"` || $force)
+		optionVar -floatValue "RH_VCP_SaturateMaxR" 1.0;
+	if (!`optionVar -exists "RH_VCP_SaturateMinG"` || $force)
+		optionVar -floatValue "RH_VCP_SaturateMinG" 0.0;
+	if (!`optionVar -exists "RH_VCP_SaturateMaxG"` || $force)
+		optionVar -floatValue "RH_VCP_SaturateMaxG" 1.0;
+	if (!`optionVar -exists "RH_VCP_SaturateMinB"` || $force)
+		optionVar -floatValue "RH_VCP_SaturateMinB" 0.0;
+	if (!`optionVar -exists "RH_VCP_SaturateMaxB"` || $force)
+		optionVar -floatValue "RH_VCP_SaturateMaxB" 1.0;
+	if (!`optionVar -exists "RH_VCP_SaturateMinA"` || $force)
+		optionVar -floatValue "RH_VCP_SaturateMinA" 0.0;
+	if (!`optionVar -exists "RH_VCP_SaturateMaxA"` || $force)
+		optionVar -floatValue "RH_VCP_SaturateMaxA" 1.0;
+	if (!`optionVar -exists "RH_VCP_SaturateMinH"` || $force)
+		optionVar -floatValue "RH_VCP_SaturateMinH" 0.0;
+	if (!`optionVar -exists "RH_VCP_SaturateMaxH"` || $force)
+		optionVar -floatValue "RH_VCP_SaturateMaxH" 360.0;
+	if (!`optionVar -exists "RH_VCP_SaturateMinS"` || $force)
+		optionVar -floatValue "RH_VCP_SaturateMinS" 0.0;
+	if (!`optionVar -exists "RH_VCP_SaturateMaxS"` || $force)
+		optionVar -floatValue "RH_VCP_SaturateMaxS" 1.0;
+	if (!`optionVar -exists "RH_VCP_SaturateMinV"` || $force)
+		optionVar -floatValue "RH_VCP_SaturateMinV" 0.0;
+	if (!`optionVar -exists "RH_VCP_SaturateMaxV"` || $force)
+		optionVar -floatValue "RH_VCP_SaturateMaxV" 1.0;
+		
+	// Randomise Components
+	if (!`optionVar -exists "RH_VCP_Randomise_Red"` || $force)
+		optionVar -floatValue "RH_VCP_Randomise_Red" 0.02;
+	if (!`optionVar -exists "RH_VCP_Randomise_Green"` || $force)
+		optionVar -floatValue "RH_VCP_Randomise_Green" 0.02;
+	if (!`optionVar -exists "RH_VCP_Randomise_Blue"` || $force)
+		optionVar -floatValue "RH_VCP_Randomise_Blue" 0.02;
+	if (!`optionVar -exists "RH_VCP_Randomise_Alpha"` || $force)
+		optionVar -floatValue "RH_VCP_Randomise_Alpha" 0.0;
+	if (!`optionVar -exists "RH_VCP_Randomise_Hue"` || $force)
+		optionVar -floatValue "RH_VCP_Randomise_Hue" 0.0;
+	if (!`optionVar -exists "RH_VCP_Randomise_Sat"` || $force)
+		optionVar -floatValue "RH_VCP_Randomise_Sat" 0.02;
+	if (!`optionVar -exists "RH_VCP_Randomise_Val"` || $force)
+		optionVar -floatValue "RH_VCP_Randomise_Val" 0.02;
+
+	// 3D Texture
+	if (!`optionVar -exists "RH_VCP_3DTexture_RandomSeed"` || $force)
+		optionVar -floatValue "RH_VCP_3DTexture_RandomSeed" 0.0;
+	if (!`optionVar -exists "RH_VCP_3DTexture_ScaleX"` || $force)
+		optionVar -floatValue "RH_VCP_3DTexture_ScaleX" 1.0;
+	if (!`optionVar -exists "RH_VCP_3DTexture_BlendAmount"` || $force)
+		optionVar -floatValue "RH_VCP_3DTexture_BlendAmount" 100.0;
+	if (!`optionVar -exists "RH_VCP_3DTexture_BlendMode"` || $force)
+		optionVar -stringValue "RH_VCP_3DTexture_BlendMode" "Replace";
+
+	// Gradient
+	if (!`optionVar -exists "RH_VCP_GradientRamp"` || $force)
+		optionVar -stringValue "RH_VCP_GradientRamp" "Multi Colour";
+	if (!`optionVar -exists "RH_VCP_GradientRampNode"` || true)
+		optionVar -stringValue "RH_VCP_GradientRampNode" "";
+	if (!`optionVar -exists "RH_VCP_GradientType"` || $force)
+		optionVar -stringValue "RH_VCP_GradientType" "Y-Axis";
+	if (!`optionVar -exists "RH_VCP_GradientCol1"` || $force)
+	{
+		optionVar -floatValue "RH_VCP_GradientCol1" 1;
+		optionVar -floatValueAppend "RH_VCP_GradientCol1" 1;
+		optionVar -floatValueAppend "RH_VCP_GradientCol1" 1;
+		optionVar -floatValueAppend "RH_VCP_GradientCol1" 1;
+	}
+	if (!`optionVar -exists "RH_VCP_GradientCol2"` || $force)
+	{
+		optionVar -floatValue "RH_VCP_GradientCol2" 0;
+		optionVar -floatValueAppend "RH_VCP_GradientCol2" 0;
+		optionVar -floatValueAppend "RH_VCP_GradientCol2" 0;
+		optionVar -floatValueAppend "RH_VCP_GradientCol2" 1;
+	}
+	if (!`optionVar -exists "RH_VCP_Gradient_BlendAmount"` || $force)
+		optionVar -floatValue RH_VCP_Gradient_BlendAmount 100.0;
+	if (!`optionVar -exists "RH_VCP_Gradient_BlendMode"` || $force)
+		optionVar -stringValue RH_VCP_Gradient_BlendMode "Replace";
+	if (!`optionVar -exists "RH_VCP_GradientRepeat"` || $force)
+		optionVar -stringValue RH_VCP_GradientRepeat Mirror;
+	if (!`optionVar -exists "RH_VCP_GradientRepeats"` || $force)
+		optionVar -floatValue RH_VCP_GradientRepeats 1.0;
+	if (!`optionVar -exists "RH_VCP_GradientOffset"` || $force)
+		optionVar -floatValue RH_VCP_GradientOffset 0.0;
+	if (!`optionVar -exists "RH_VCP_GradientStartPos"` || $force)
+	{
+		optionVar -floatValue "RH_VCP_GradientStartPos" 0;
+		optionVar -floatValueAppend "RH_VCP_GradientStartPos" 0;
+		optionVar -floatValueAppend "RH_VCP_GradientStartPos" 0;
+	}
+	if (!`optionVar -exists "RH_VCP_GradientUseWorldBounds"` || $force)
+		optionVar -intValue RH_VCP_GradientUseWorldBounds 0;
+	if (!`optionVar -exists "RH_VCP_GradientWorldBoundsMin"` || $force)
+	{
+		optionVar -floatValue "RH_VCP_GradientWorldBoundsMin" -100;
+		optionVar -floatValueAppend "RH_VCP_GradientWorldBoundsMin" -100;
+		optionVar -floatValueAppend "RH_VCP_GradientWorldBoundsMin" -100;
+	}
+	if (!`optionVar -exists "RH_VCP_GradientWorldBoundsMax"` || $force)
+	{
+		optionVar -floatValue "RH_VCP_GradientWorldBoundsMax" 100;
+		optionVar -floatValueAppend "RH_VCP_GradientWorldBoundsMax" 100;
+		optionVar -floatValueAppend "RH_VCP_GradientWorldBoundsMax" 100;
+	}
+	if (!`optionVar -exists "RH_VCP_GradientRadius"` || $force)
+		optionVar -floatValue RH_VCP_GradientRadius 1.0;
+	if (!`optionVar -exists "RH_VCP_GradientReverse"` || $force)
+		optionVar -intValue RH_VCP_GradientReverse 0;
+	if (!`optionVar -exists "RH_VCP_GradientOverrideCenter"` || $force)
+		optionVar -intValue RH_VCP_GradientOverrideCenter 0;
+	if (!`optionVar -exists "RH_VCP_GradientOverrideRadius"` || $force)
+		optionVar -intValue RH_VCP_GradientOverrideRadius 0;
+
+	// Inspector
+	if (!`optionVar -exists "RH_VCP_Inspector_MinRGBA"` || $force)
+	{
+		optionVar -floatValue RH_VCP_Inspector_MinRGBA 0.0;
+		optionVar -floatValueAppend RH_VCP_Inspector_MinRGBA 0.0;
+		optionVar -floatValueAppend RH_VCP_Inspector_MinRGBA 0.0;
+		optionVar -floatValueAppend RH_VCP_Inspector_MinRGBA 0.0;
+	}
+	if (!`optionVar -exists "RH_VCP_Inspector_MaxRGBA"` || $force)
+	{
+		optionVar -floatValue RH_VCP_Inspector_MaxRGBA 0.0;
+		optionVar -floatValueAppend RH_VCP_Inspector_MaxRGBA 0.0;
+		optionVar -floatValueAppend RH_VCP_Inspector_MaxRGBA 0.0;
+		optionVar -floatValueAppend RH_VCP_Inspector_MaxRGBA 0.0;
+	}
+	if (!`optionVar -exists "RH_VCP_Inspector_AvgRGBA"` || $force)
+	{
+		optionVar -floatValue RH_VCP_Inspector_AvgRGBA 0.0;
+		optionVar -floatValueAppend RH_VCP_Inspector_AvgRGBA 0.0;
+		optionVar -floatValueAppend RH_VCP_Inspector_AvgRGBA 0.0;
+		optionVar -floatValueAppend RH_VCP_Inspector_AvgRGBA 0.0;
+	}
+	if (!`optionVar -exists "RH_VCP_Inspector_UniqueColours"` || $force)
+		optionVar -intValue RH_VCP_Inspector_UniqueColours 0;
+
+	// Layers
+	if (!`optionVar -exists "RH_VCP_Layers_ViewMode"` || $force)
+		optionVar -stringValue RH_VCP_Layers_ViewMode "Final Composite";
+	if (!`optionVar -exists "RH_VCP_Final_Layer_Name"` || $force)
+		optionVar -stringValue RH_VCP_Final_Layer_Name "VCP_MasterComp";
+	$VCP_FINAL_LAYER_NAME = `optionVar -q "RH_VCP_Final_Layer_Name"`;
+
+
+	if ($force)
+	{
+		$VCP_Apply_RGBA[0] = 0.0;
+		$VCP_Apply_RGBA[1] = 0.0;
+		$VCP_Apply_RGBA[2] = 0.0;
+		$VCP_Apply_RGBA[3] = 1.0;
+		$VCP_Apply_HSV[0] = 0.0;
+		$VCP_Apply_HSV[1] = 1.0;
+		$VCP_Apply_HSV[2] = 1.0;
+		$VCP_paint[0] = 0.0;
+		$VCP_paint[1] = 0.0;
+		$VCP_paint[2] = 0.0;
+		$VCP_paint[3] = 0.0;
+		$VCP_paint[4] = 0.0;
+		$VCP_paint[5] = 0.0;
+	}
+
+	$RH_VCP_OldWireDisplay = `displayPref -q -wsa`;
+}
+
+global proc
+VCP_OpenTab(string $tabs, string $name)
+{
+	string $labels[] = `tabLayout -q -tabLabel $tabs`;
+	int $index = 0;
+	for ($label in $labels)
+	{
+		if ($label == $name)
+		{
+			tabLayout -e -selectTabIndex ($index+1) $tabs;
+			optionVar -stringValue RH_VCP_ActiveTab $name;
+			break;
+		}
+		$index++;
+	}
+}
+
+global proc
+VCP_SaveCurrentTab(string $tabs)
+{
+	string $labels[] = `tabLayout -q -tabLabel $tabs`;
+	int $index = `tabLayout -q -selectTabIndex $tabs`;
+	if ($index > 0)
+	{
+		optionVar -stringValue RH_VCP_ActiveTab $labels[$index - 1];
+	}
+}
+
+
+global proc
+VCP_ToggleWireframe()
+{
+	if (`displayPref -q -wsa` == "none")
+	{
+		displayPref -wsa "full";
+	}
+	else
+	{
+		displayPref -wsa "none";
+	}
+}
+
+global proc
+VCP_CreateWindow(string $windowName, string $title, string $miniName, string $function)
+{
+	window -wh 320 400 -t $title -tlb 0 -mnb 1 -mxb 0 -s 0 -rtf 0 -iconName $miniName $windowName;
+	
+	$frame = eval($function);
+
+	window -e -resizeToFitChildren false $windowName;
+	window -e -s true -resizeToFitChildren true $windowName;
+	
+	showWindow $windowName;
+
+	window -e -resizeToFitChildren true $windowName;
+	window -e -resizeToFitChildren false $windowName;
+}
+
+global proc
+VCP_ShowWindow(string $windowName, string $windowTitle, string $miniName, string $function)
+{
+	if (`window -ex $windowName`) 
+	{
+		// If minimised
+		if (`window -q -iconify $windowName`)
+		{
+			window -e -iconify false $windowName;
+		}
+		return;
+	}
+	else
+	{
+		VCP_CreateWindow($windowName, $windowTitle, $miniName, $function);
+	}
+	//window -e -wh 311 310 $windowName;
+}
+
+global proc
+VCP_ShowColourSwatch()
+{
+	if (`window -ex RH_VCP_ColourSwatchWindow`) 
+	{
+		// If minimised
+		if (`window -q -iconify RH_VCP_ColourSwatchWindow`)
+		{
+			window -e -iconify false RH_VCP_ColourSwatchWindow;
+		}
+		return;
+	}
+	else
+	{
+		VCP_CreateWindow RH_VCP_ColourSwatchWindow (VCP_uiRes("m_RH_VCP.kSwatch_WindowTitle")) (VCP_uiRes("m_RH_VCP.kSwatch_WindowTitleShort")) VCP_CreateFrameContents_ColourSwatch;
+	}
+	window -e -wh 330 200 RH_VCP_ColourSwatchWindow;
+}
+
+proc
+VCP_Menu_Operations()
+{
+	menuItem -subMenu true -label (VCP_uiRes("m_RH_VCP.kMenu_ApplyTitle"))-tearOff true;
+		menuItem -label (VCP_uiRes("m_RH_VCP.kMenu_ApplyColour")) -command "VCP_ShowWindow(\"RH_VCP_ApplyColourOpWindow\", \"VC Apply Colour\", \"Apply\", \"VCP_CreateFrame_ApplyColour(0)\");";
+		menuItem -label (VCP_uiRes("m_RH_VCP.kMenu_RandomiseCompontents")) -command "VCP_ShowWindow(\"RH_VCP_RandomiseCompsOpWindow\", \"VC Randomise Components\", \"Randomise\", \"VCP_CreateFrame_ApplyRandomiseComponents(0)\");";
+		menuItem -label (VCP_uiRes("m_RH_VCP.kMenu_Apply3DTexture")) -command "VCP_ShowWindow(\"RH_VCP_3DTextureOpWindow\", \"VC Apply 3D Texture\", \"3D Texture\", \"VCP_CreateFrame_3DTexture(0)\");";
+		menuItem -label (VCP_uiRes("m_RH_VCP.kMenu_GradientTool")) -command "VCP_ShowWindow(\"RH_VCP_GradientToolWindow\", \"VC  Gradient Tool\", \"Gradient\", \"VCP_CreateFrame_Gradients(0)\");";
+		menuItem -label (VCP_uiRes("m_RH_VCP.kMenu_MentalRayBaking")) -command "VCP_ShowWindow(\"RH_VCP_MRBakingWindow\", \"VC Mental Ray Baking\", \"Baking\", \"VCP_CreateFrame_MentalRay(0)\");";
+	setParent -menu ..;
+	menuItem -subMenu true -label (VCP_uiRes("m_RH_VCP.kMenu_AdjustTitle")) -tearOff true;
+		menuItem -label (VCP_uiRes("m_RH_VCP.kMenu_AdjustRGB")) -command "VCP_ShowWindow(\"RH_VCP_RGBOpWindow\", \"VC RGB\", \"RGBA \", \"VCP_CreateFrame_RGB(0)\");";
+		menuItem -label (VCP_uiRes("m_RH_VCP.kMenu_AdjustHSV")) -command "VCP_ShowWindow(\"RH_VCP_HSVOpWindow\", \"VC HSV\", \"HSV\", \"VCP_CreateFrame_HSV(0)\");";
+		menuItem -label (VCP_uiRes("m_RH_VCP.kMenu_AdjustBC")) -command "VCP_ShowWindow(\"RH_VCP_BCOpWindow\", \"VC Brightness Contrast\", \"BC\", \"VCP_CreateFrame_BC(0)\");";
+		menuItem -label (VCP_uiRes("m_RH_VCP.kMenu_AdjustLevels")) -command "VCP_ShowWindow(\"RH_VCP_LevelsOpWindow\", \"VC Levels\", \"Levels\", \"VCP_CreateFrame_Levels(0)\");";
+		menuItem -label (VCP_uiRes("m_RH_VCP.kMenu_Filters")) -command "VCP_ShowWindow(\"RH_VCP_FiltersOpWindow\", \"VC Filters\", \"Filters\", \"VCP_CreateFrame_Filters(0)\");";
+		menuItem -label (VCP_uiRes("m_RH_VCP.kMenu_NudgeTool")) -command "VCP_ShowWindow(\"RH_VCP_NudgeToolWindow\", \"VC Nudge\", \"Nudge\", \"VCP_CreateFrame_ChannelNudger(0)\");";
+	setParent -menu ..;
+	menuItem -subMenu true -label (VCP_uiRes("m_RH_VCP.kMenu_ExtraTitle")) -tearOff true;
+		menuItem -label (VCP_uiRes("m_RH_VCP.kMenu_ChannelClamp")) -command "VCP_ShowWindow(\"RH_VCP_ClampOpWindow\", \"VVC Clamp\", \"Clamp\", \"VCP_CreateFrame_Clamp(0)\");";
+		menuItem -label (VCP_uiRes("m_RH_VCP.kMenu_ChannelSaturate")) -command "VCP_ShowWindow(\"RH_VCP_SaturateOpWindow\", \"VC Saturate\", \"Saturate\", \"VCP_CreateFrame_Saturate(0)\");";
+		menuItem -label (VCP_uiRes("m_RH_VCP.kMenu_ChannelSwap")) -command "VCP_ShowWindow(\"RH_VCP_ChannelSwapOpWindow\", \"VC Swap\", \"Swap\", \"VCP_CreateFrame_ChannelSwapper(0)\");";
+		menuItem -label (VCP_uiRes("m_RH_VCP.kMenu_ChannelContrast")) -command "VCP_ShowWindow(\"RH_VCP_ChannelContrastOpWindow\", \"VVC Channel Contrast\", \"CContast\", \"VCP_CreateFrame_ContrastChannels(0)\");";
+		menuItem -label (VCP_uiRes("m_RH_VCP.kMenu_Invert")) -command "VCP_ShowWindow(\"RH_VCP_InvertOpWindow\", \"VC Invert\", \"Invert\", \"VCP_CreateFrame_Invert(0)\");";
+		menuItem -label (VCP_uiRes("m_RH_VCP.kMenu_Posterize")) -command "VCP_ShowWindow(\"RH_VCP_PosterizeOpWindow\", \"VC Posterize\", \"Posterize\", \"VCP_CreateFrame_Posterize(0)\");";
+		menuItem -label (VCP_uiRes("m_RH_VCP.kMenu_Normals2RGB")) -command "VCP_ShowWindow(\"RH_VCP_Normals2RGBOpWindow\", \"VC Normals->RGB\", \"Normals\", \"VCP_CreateFrame_ConvertNormals(0)\");";
+		menuItem -label (VCP_uiRes("m_RH_VCP.kMenu_Facetise")) -command "VCP_ShowWindow(\"RH_VCP_FacetiseOpWindow\", \"VC Facetise\", \"Facetise\", \"VCP_CreateFrame_Facetise(0)\");";
+	setParent -menu ..;
+}
+
+proc
+VCP_Menu_Tools()
+{
+	$layersMenu = `menuItem -label "Layers" -command "VCP_ShowLayersWindow"`;
+	if (!`exists polyColorSet`)
+	{
+		menuItem -e -enable false -label (VCP_uiRes("m_RH_VCP.kMenu_LayersMaya7Required")) $layersMenu;
+	}
+	menuItem -label (VCP_uiRes("m_RH_VCP.kMenu_ColourSwatch")) -command "VCP_ShowColourSwatch";
+	menuItem -label (VCP_uiRes("m_RH_VCP.kMenu_ColourInspector")) -command "VCP_VertexColourInspector";
+}
+
+proc
+VCP_Menu_View()
+{
+	menuItem -label (VCP_uiRes("m_RH_VCP.kMenu_ViewReset")) -command "VCP_VertColorDisplay 0";
+	menuItem -label (VCP_uiRes("m_RH_VCP.kMenu_ViewVertexColourOnly")) -command "VCP_VertColorDisplay 1";
+	menuItem -label (VCP_uiRes("m_RH_VCP.kMenu_PlusTexture")) -command "VCP_VertColorDisplay 2";
+	menuItem -label (VCP_uiRes("m_RH_VCP.kMenu_PlusTextureLight")) -command "VCP_VertColorDisplay 3";
+}
+
+proc
+VCP_Menu_Shortcuts()
+{
+	menuItem -label (VCP_uiRes("m_RH_VCP.kMenu_Shortcut_ApplyColor")) -command "performApplyColor 0";
+		menuItem -optionBox true -command "performApplyColor 1";
+	menuItem -label (VCP_uiRes("m_RH_VCP.kMenu_Shortcut_PaintColor")) -command "PaintVertexColorTool";
+		menuItem -optionBox true -command "PaintVertexColorToolOptions";
+	menuItem -divider true;
+	//menuItem -label "Bake Lighting Only" -command "toggleMaterialMapping(0);polyGeoSampler -bf -sf 1 -su -cdo -colorBlend \"overwrite\" -alphaBlend \"overwrite\"; toggleMaterialMapping(1);";
+	//menuItem -label "Bake Lights + Materials" -command "polyGeoSampler -bf -sf 1 -su -cdo -colorBlend \"overwrite\" -alphaBlend \"overwrite\";";
+	menuItem -label (VCP_uiRes("m_RH_VCP.kMenu_Shortcut_BakeMaya")) -command "performPrelight 0";
+		menuItem -optionBox true -command "performPrelight 1";
+	menuItem -label (VCP_uiRes("m_RH_VCP.kMenu_Shortcut_BakeMentalRay")) -command "VCP_MentalRay_AmbientOcclusionBakeOptions();";
+	//menuItem -label "Bake Ambient Occlusion (Mental Ray)" -command "VCP_MentalRay_AmbientOcclusionBakeSelection(1);";
+	menuItem -divider true;
+	menuItem -label (VCP_uiRes("m_RH_VCP.kMenu_Shortcut_AttributeMapImportExport")) -command "VCP_ShowAttributeMapWindow();";
+	menuItem -label (VCP_uiRes("m_RH_VCP.kMenu_Shortcut_TransferColours")) -command "transferAttributes -transferPositions 0 -transferNormals 0 -transferUVs 0 -transferColors 2 -sampleSpace 0 -flipUVs 0 -colorBorders 1";
+	menuItem -divider true;
+	menuItem -label (VCP_uiRes("m_RH_VCP.kMenu_Shortcut_ColorSetEditor")) -command "colorSetEditor";
+	menuItem -label (VCP_uiRes("m_RH_VCP.kMenu_Shortcut_ComponentEditor")) -command "ComponentEditor";	
+}
+
+proc
+VCP_Menu_Help()
+{
+	$MI_licensing = `menuItem -label (VCP_uiRes("m_RH_VCP.kMenu_Help_LicenseManager")) -command "RH_OpenVertexChameleon About;"`;
+	menuItem -divider true;
+	menuItem -label (VCP_uiRes("m_RH_VCP.kMenu_Help_DocsLocal")) -command "VCP_LoadLocalDocs";
+	menuItem -label (VCP_uiRes("m_RH_VCP.kMenu_Help_DocsInternet")) -command "showHelp -absolute \"http://www.renderheads.com/portfolio/VertexChameleon/docs/\"";
+	menuItem -divider true;
+	menuItem -label (VCP_uiRes("m_RH_VCP.kMenu_Help_VCWebsite")) -command "showHelp -absolute \"http://www.renderheads.com/portfolio/VertexChameleon/\"";
+	menuItem -divider true;
+	menuItem -label (VCP_uiRes("m_RH_VCP.kMenu_Help_ResetSettings")) -command "VCP_ResetSettings";
+}
+
+global proc
+VCP_Menu_Add()
+{
+	global string $gMainWindow;
+	global string $gModelingMenus[];
+
+	string $vcp_menuName = "RH_VCP_MenuBarEntry";
+
+	if (!`optionVar -exists "RH_VCP_AddMainMenu"` || (`optionVar -q "RH_VCP_AddMainMenu"` == 1))
+	{
+		int $supportsMenuSets = `exists findMenuSetFromLabel`;
+
+		if ($supportsMenuSets)
+		{
+			VCP_Menu_Remove();
+			string $polyMS = "polygonsMenuSet";//`findMenuSetFromLabel "Polygons"`;
+			string $polyMenus[] = `menuSet -q -menuArray $polyMS`;
+			
+			if (!stringArrayContains($vcp_menuName, $polyMenus))
+			{
+				menu -parent $gMainWindow -label (VCP_uiRes("m_RH_VCP.kMenu_Title")) -tearOff true -allowOptionBoxes true $vcp_menuName;
+					menuItem -label (VCP_uiRes("m_RH_VCP.kMenu_ChameleonWindow")) -command "RH_VertexChameleon";
+					menuItem -divider true;
+					VCP_Menu_Operations();
+					menuItem -divider true;
+					menuItem -subMenu true -label (VCP_uiRes("m_RH_VCP.kMenu_ToolsTitle")) -tearOff true;
+						VCP_Menu_Tools();
+					setParent -menu ..;
+					menuItem -subMenu true -label (VCP_uiRes("m_RH_VCP.kMenu_ViewTitle")) -tearOff true;
+						VCP_Menu_View();
+					setParent -menu ..;
+					menuItem -subMenu true -label (VCP_uiRes("m_RH_VCP.kMenu_MayaToolsTitle")) -allowOptionBoxes true -tearOff true;
+						VCP_Menu_Shortcuts();
+					setParent -menu ..;
+					menuItem -subMenu true -label (VCP_uiRes("m_RH_VCP.kMenu_HelpTitle"));
+						VCP_Menu_Help();
+					setParent -menu ..;
+
+				menuSet -addMenu $vcp_menuName $polyMS;
+				updateMenuModeUI;
+			}
+		}
+		else
+		{
+			VCP_Menu_Remove();
+			setParent $gMainWindow;
+			menu -parent $gMainWindow -label (VCP_uiRes("m_RH_VCP.kMenu_Title")) -tearOff true -allowOptionBoxes true $vcp_menuName;
+				menuItem -label (VCP_uiRes("m_RH_VCP.kMenu_ChameleonWindow")) -command "RH_VertexChameleon";
+				menuItem -divider true;
+				VCP_Menu_Operations();
+				menuItem -divider true;
+				menuItem -subMenu true -label (VCP_uiRes("m_RH_VCP.kMenu_ToolsTitle")) -tearOff true;
+					VCP_Menu_Tools();
+				setParent -menu ..;
+				menuItem -subMenu true -label (VCP_uiRes("m_RH_VCP.kMenu_ViewTitle")) -tearOff true;
+					VCP_Menu_View();
+				setParent -menu ..;
+				menuItem -subMenu true -label (VCP_uiRes("m_RH_VCP.kMenu_MayaToolsTitle")) -allowOptionBoxes true -tearOff true;
+					VCP_Menu_Shortcuts();
+				setParent -menu ..;
+				menuItem -subMenu true -label (VCP_uiRes("m_RH_VCP.kMenu_HelpTitle"));
+					VCP_Menu_Help();
+				setParent -menu ..;
+
+			$gModelingMenus[size($gModelingMenus)] = $vcp_menuName;
+			updateMenuModeUI;
+		}
+	}
+}
+
+global proc
+VCP_Menu_Remove()
+{
+	global string $gModelingMenus[];
+	string $vcp_menuName = "RH_VCP_MenuBarEntry";
+	int $supportsMenuSets = `exists findMenuSetFromLabel`;
+
+	if ($supportsMenuSets)
+	{
+		string $polyMS = "polygonsMenuSet";//`findMenuSetFromLabel "Polygons"`;
+		string $polyMenus[] = `menuSet -q -menuArray $polyMS`;
+		string $menu = `findMenuFromMenuSet $polyMS "Vertex Chameleon"`;
+		
+		if (stringArrayContains($vcp_menuName, $polyMenus))
+		{
+			string $oldMenu = `menuSet -q -currentMenuSet`;
+			menuSet -currentMenuSet $polyMS;
+			menuSet -removeMenu $vcp_menuName;
+			menuSet -currentMenuSet $oldMenu;
+
+			if (size($menu) != 0)
+			{
+				deleteUI -menu $vcp_menuName;
+			}
+			updateMenuModeUI;
+		}
+	}
+	else
+	{
+		if (stringArrayContains($vcp_menuName, $gModelingMenus))
+		{
+			string $items[] = { $vcp_menuName };
+			$gModelingMenus = stringArrayRemove($items, $gModelingMenus);
+			deleteUI -menu $vcp_menuName;
+			updateMenuModeUI;
+		}
+	}
+}
+
+global proc
+VCP_ShowAttributeMapWindow()
+{
+	// First we switch to the paint tool
+	PaintVertexColorTool;
+
+	window -t (VCP_uiRes("m_RH_VCP.kAttribMap_WindowTitle"));
+	currentCtx artAttrColorPerVertexContext;
+	string  $artCommand = "artAttrPaintVertexCtx";
+	string	$currContext = "artAttrColorPerVertexContext";
+	string	$currTool	 = "artAttrColorPerVertex";
+		frameLayout -l (VCP_uiRes("m_RH_VCP.kAttribMap_FrameTitle"))
+			-collapsable true -collapse false
+			artAttrAttrMapFrame;
+	artisanCreateAttrMapFrame( "artAttrAttrMapFrame", $currTool );
+	artisanAttrMapCallback( $artCommand, $currTool );
+
+	frameLayout -e -collapsable true -collapse false artisanImportFrame;
+	frameLayout -e -collapsable true -collapse false artisanExportFrame;
+
+	showWindow;
+}
+
+/*
+global proc
+VCP_UpdateChannelMasks(string $r, string $g, string $b, string $a)
+{
+	string $mask = "";
+	if (1==`iconTextCheckBox -q -value $r`)
+		$mask += "R";
+	if (1==`iconTextCheckBox -q -value $g`)
+		$mask += "G";
+	if (1==`iconTextCheckBox -q -value $b`)
+		$mask += "B";
+	if (1==`iconTextCheckBox -q -value $a`)
+		$mask += "A";
+
+	optionVar -stringValue RH_VCP_ChannelMask $mask;
+}*/
+
+global proc
+RH_VertexChameleon()
+{
+	// Set the tab to it's previous state
+	string $oldTabName = `optionVar -query RH_VCP_ActiveTab`;
+	RH_OpenVertexChameleon($oldTabName);
+}
+
+global proc
+RH_OpenVertexChameleon(string $tabName)
+{
+	global int $RH_VCP_InitialBootup;
+
+	VCP_CreateOptions(false);
+	VCP_Load();
+
+	int $dock = `optionVar -q "RH_VCP_DockChannelBox"`;
+	string $VTwin = "RH_VertexPolyColourWindow";
+	int $hasDockControl = `exists("dockControl")`;
+	int $oldDocking = ($dock && !$hasDockControl);
+
+	if ($oldDocking)
+	{
+		if (!`isUIComponentVisible("Channel Box / Layer Editor")`) 
+		{
+			toggleUIComponentVisibility("Channel Box / Layer Editor");
+		}
+		if (exists("setChannelsLayersWidth"))
+			setChannelsLayersWidth(315);
+
+		if (`layout -exists "RH_VCP_MainTabs"`)
+		{
+			// Open correct tab
+			if ($tabName != `optionVar -query RH_VCP_ActiveTab`)
+			{
+				VCP_OpenTab("RH_VCP_MainTabs", $tabName);
+			}
+			paneLayout -e -cn "single" -setPane RH_VCP_MainFormLayout 1 ChannelsLayersPaneLayout; 
+			return;
+		}
+		
+		setParent ChannelsLayersPaneLayout;
+	}
+	else
+	{
+		if ($hasDockControl)
+		{
+			if (`dockControl -exists RH_Dock_VertexChameleonMain1x`)
+			{
+				dockControl -e -visible true -raise RH_Dock_VertexChameleonMain1x;
+				return;
+			}
+		}
+		if (`window -ex $VTwin`) 
+   		{
+			// Open correct tab
+			if ($tabName != `optionVar -query RH_VCP_ActiveTab`)
+			{
+				VCP_OpenTab("RH_VCP_MainTabs", $tabName);
+			}
+			// If minimised
+			if (`window -q -iconify $VTwin`)
+			{
+				window -e -iconify false $VTwin;
+			}
+   			return;
+		}
+		window -menuBar true -wh 150 500 -t "Vertex Chameleon v1.82" -mnb 1 -mxb 0 -s 1 -rtf 1 -iconName "Chameleon" $VTwin;
+	}
+
+	string $form = `formLayout -numberOfDivisions 100 -width 350 -height 500 RH_VCP_MainFormLayout`;
+		string $LT_menuBar = "";
+		if ($oldDocking)
+		{
+			$LT_menuBar=`menuBarLayout -parent $form`;
+		}
+
+		menu -label (VCP_uiRes("m_RH_VCP.kMenu_OperationsTitle")) -tearOff true -allowOptionBoxes false;
+			VCP_Menu_Operations();
+
+		menu -label (VCP_uiRes("m_RH_VCP.kMenu_ToolsTitle")) -tearOff true -allowOptionBoxes false;
+			VCP_Menu_Tools();
+
+		menu -label (VCP_uiRes("m_RH_VCP.kMenu_ViewTitle")) -tearOff true -allowOptionBoxes false;
+			VCP_Menu_View();
+
+		menu -label (VCP_uiRes("m_RH_VCP.kMenu_MayaToolsTitle")) -tearOff true -allowOptionBoxes true;
+			VCP_Menu_Shortcuts();
+
+		menu -label (VCP_uiRes("m_RH_VCP.kMenu_HelpTitle")) -tearOff false -allowOptionBoxes false;
+			VCP_Menu_Help();
+
+		if ($oldDocking)
+		{
+			// I have no idea why but this columnLayout and text needs to be here
+			// in order for the menu to show up in the channelBox
+				columnLayout;
+ 					text -height 1 -label "                                                                                     " ;
+ 				setParent ..;
+			setParent..;
+		}
+
+		
+		$Top = `frameLayout
+					-parent $form
+					-bv false
+					-labelVisible false
+					-collapsable false
+					-marginWidth 4
+					-marginHeight 4`;
+		//$Top=`columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 4`;
+			rowLayout -parent $Top -nc 2 -adjustableColumn 1 -cw2 80 160 -cl2 "center" "center";
+
+				button -l (VCP_uiRes("m_RH_VCP.kMainUI_ToggleWire")) -w 75 -command "VCP_ToggleWireframe";
+
+				string $OM_channelMask = `optionMenu -width 160 -label " Channel Mask:"`;
+					menuItem -label "RGBA";
+					menuItem -label "RGB";
+					menuItem -label "R";
+					menuItem -label "G";
+					menuItem -label "B";
+					menuItem -label "A";
+
+				// Commands
+				optionMenu -edit -changeCommand ("RH_SetVarFromOptionMenu " + $OM_channelMask + " RH_VCP_ChannelMask") $OM_channelMask;
+
+				// Settings
+				optionMenu -edit -value `optionVar -query RH_VCP_ChannelMask` $OM_channelMask;
+
+				// Commands
+				//$cmd = "optionVar -intValue RH_VCP_ComponentOverride (`optionMenu -q -select " + $OM_componentType + "`);";
+				//optionMenu -edit -changeCommand $cmd $OM_componentType;
+
+				// Settings
+				//optionMenu -e -select (`optionVar -query RH_VCP_ComponentOverride`) $OM_componentType; 
+			setParent ..;
+		setParent..;
+
+		
+		$Tabs = `tabLayout -innerMarginWidth 0 -innerMarginHeight 0 RH_VCP_MainTabs`;
+			$TabApplyMain = `VCP_CreateTab_ApplyMain`;
+			$TabAdjustMain = `VCP_CreateTab_AdjustMain`;
+			$TabExtra = `VCP_CreateTab_AdjustExtra`;
+			$TabSettings = `VCP_CreateTab_Settings`;
+			$TabAbout = `VCP_CreateTab_About`;
+		setParent ..;
+	
+	
+	tabLayout -edit
+			-tabLabel $TabApplyMain (VCP_uiRes("m_RH_VCP.kTabTitle_Apply"))
+			-tabLabel $TabAdjustMain (VCP_uiRes("m_RH_VCP.kTabTitle_Adjust"))
+			-tabLabel $TabExtra (VCP_uiRes("m_RH_VCP.kTabTitle_Extra"))
+			-tabLabel $TabSettings (VCP_uiRes("m_RH_VCP.kTabTitle_Settings"))
+			-tabLabel $TabAbout (VCP_uiRes("m_RH_VCP.kTabTitle_About"))
+			$Tabs;
+
+	tabLayout -e -changeCommand ("VCP_SaveCurrentTab " + $Tabs) $Tabs;
+
+	if ($oldDocking)
+	{
+		formLayout -edit
+			-attachControl $Top "top" 0 $LT_menuBar
+			-attachControl $Tabs "top" 0 $Top
+			-attachForm     $Tabs     "left"   2
+			-attachForm     $Tabs     "right"  2
+			-attachForm     $Tabs     "bottom"  2
+
+			-attachForm     $Tabs     "top"    35
+			$form;
+	}
+	else
+	{
+		formLayout -edit
+			-attachForm     $Top     "top"    2
+			-attachForm     $Tabs     "left"   2
+			-attachForm     $Tabs     "right"  2
+			-attachForm     $Tabs     "bottom"  2
+
+			-attachForm     $Tabs     "top"    35
+			$form;
+	}
+
+	// Set the active tab
+	VCP_OpenTab($Tabs, $tabName);
+
+	//menuItem -e -command ("tabLayout -e -selectTab " + $TabAbout + " " + $Tabs) $MI_licensing;
+	//menuItem -e -command ("tabLayout -e -selectTab " + $TabAbout + " " + $Tabs) $MI_about;
+
+	//
+	// Resize window
+	//
+
+	if ($oldDocking)
+	{
+		paneLayout -e -cn "single" -setPane $form 1 ChannelsLayersPaneLayout; 
+	}
+	else
+	{
+		if ($hasDockControl)
+		{
+			dockControl -area "left"
+				-content $VTwin
+				-label "Vertex Chameleon"
+				-allowedArea "left"
+				-allowedArea "right" RH_Dock_VertexChameleonMain1x;
+		}
+		else
+		{
+			//setParent..;
+			showWindow $VTwin;
+			//window -e -widthHeight 320 500 $VTwin;
+		}
+		//window -e -resizeToFitChildren true $VTwin;
+		//window -e -resizeToFitChildren false $VTwin;
+
+		// Restore the Wireframe state when the UI is closed
+		scriptJob -parent $VTwin -replacePrevious -uiDeleted $VTwin ("displayPref -wsa \"full\"");
+	}
+
+	if ($RH_VCP_InitialBootup == 1)
+	{
+		$RH_VCP_InitialBootup = 0;
+		// This is where the version update check was done
+	}
+}
+VCP_Load();
+VCP_Menu_Add();
+VCP_CreateOptions(false);

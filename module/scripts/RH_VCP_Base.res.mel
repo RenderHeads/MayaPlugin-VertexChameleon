@@ -1,0 +1,21 @@
+//
+// Vertex Chameleon Maya Plugin Source Code
+// Copyright (C) 2007-2014 RenderHeads Ltd.
+//
+// This source is available for distribution and/or modification
+// only under the terms of the MIT license.  All rights reserved.
+//
+// The source is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// FITNESS FOR A PARTICULAR PURPOSE. See the MIT license
+// for more details.
+//
+
+// Versioning
+VCP_DisplayString "Version of Maya (^1s) not supported by this plugin" m_VCPBase.kMayaVersionNotSupported;
+VCP_DisplayString "Version of Maya" m_VCPBase.kMayaVersionNotSupportedSplit1;
+VCP_DisplayString "not supported by this plugin" m_VCPBase.kMayaVersionNotSupportedSplit2;
+VCP_DisplayString "Cannot determine module path" m_VCPBase.kCantDetermineModulePath;
+
+// Misc
+VCP_DisplayString "No vertices selected" m_VCPBase.kErrorNoVerticesSelected;

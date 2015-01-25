@@ -1,0 +1,328 @@
+//
+// Vertex Chameleon Maya Plugin Source Code
+// Copyright (C) 2007-2014 RenderHeads Ltd.
+//
+// This source is available for distribution and/or modification
+// only under the terms of the MIT license.  All rights reserved.
+//
+// The source is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// FITNESS FOR A PARTICULAR PURPOSE. See the MIT license
+// for more details.
+//
+
+global int $VCP_AdjustSliderMoving = 0;
+
+global proc
+VCP_ApplyRandomise(string $sliderName)
+{
+	global string $RH_VCP_OldWireDisplay;
+	global int $VCP_AdjustSliderMoving;
+
+	float $amount = `floatSliderGrp -query -value $sliderName`;
+
+	if ($amount != 0.0)
+	{
+		if ($VCP_AdjustSliderMoving == 0)
+		{
+			// save source
+			VCP_CreateColourStoreForSelection();
+			// full apply
+			VCP_ApplySliderRandomiseApply100Command(true);
+			// reset to zero
+			VCP_ApplySliderRandomiseCommand(0.0);
+			
+			$VCP_AdjustSliderMoving = 1;
+			$RH_VCP_OldWireDisplay = `displayPref -q -wsa`;
+			displayPref -wireframeOnShadedActive "none";
+			undoInfo -swf 0;
+		}
+	}
+	if ($VCP_AdjustSliderMoving == 1)
+	{
+		VCP_ApplySliderRandomiseCommand($amount);
+	}
+}
+
+global proc
+VCP_ApplySliderRandomiseApply100Command(int $writeNode)
+{
+	string $cmd = "RH_VertexPolyColour -op 405 ";
+	if ($writeNode)
+		$cmd += "-nodeWriteDest ";
+
+	if (`optionVar -query RH_VCP_Verbose` > 0)
+	{
+		$cmd += " -verbose ";
+	}
+	if (`optionVar -query RH_VCP_NoUndo`)
+		$cmd += " -nun ";
+
+	$cmd += " -r " + `optionVar -q RH_VCP_ApplyRandom_Red`;
+	$cmd += " -g " + `optionVar -q RH_VCP_ApplyRandom_Green`;
+	$cmd += " -b " + `optionVar -q RH_VCP_ApplyRandom_Blue`;
+	$cmd += " -a " + `optionVar -q RH_VCP_ApplyRandom_Alpha`;
+	$cmd += " -h " + `optionVar -q RH_VCP_ApplyRandom_Hue`;
+	$cmd += " -s " + `optionVar -q RH_VCP_ApplyRandom_Sat`;
+	$cmd += " -v " + `optionVar -q RH_VCP_ApplyRandom_Val`;
+
+	int $forceComponent = `optionVar -query RH_VCP_ComponentOverride`;
+	if ($forceComponent > 1)
+	{
+		if ($forceComponent == 2)
+			$cmd += " -forceComponent 1 ";
+		if ($forceComponent == 3)
+			$cmd += " -forceComponent 2 ";
+	}
+
+	float $blendAmount = `optionVar -query "RH_VCP_ApplyRandom_BlendAmount"` * 0.01;
+	if ($blendAmount != 0.0)
+	{
+		string $blendMode = `optionVar -query "RH_VCP_ApplyRandom_BlendMode"`;
+		
+		$cmd += " -blend " + $blendAmount;
+		$cmd += " -blendMode \"" + $blendMode + "\"";
+	}
+	$cmd += " -channelMask " + `optionVar -q RH_VCP_ChannelMask` + " ";
+
+	eval($cmd);
+}
+
+global proc
+VCP_ApplySliderRandomiseApplyChannelCommand(string $channel, string $var)
+{
+	string $cmd = "RH_VertexPolyColour -op 405 ";
+
+	if (`optionVar -query RH_VCP_Verbose` > 0)
+	{
+		$cmd += " -verbose ";
+	}
+	if (`optionVar -query RH_VCP_NoUndo`)
+		$cmd += " -nun ";
+
+	$cmd += " -" + $channel + " ";
+	$cmd += `optionVar -q $var`;
+
+	int $forceComponent = `optionVar -query RH_VCP_ComponentOverride`;
+	if ($forceComponent > 1)
+	{
+		if ($forceComponent == 2)
+			$cmd += " -forceComponent 1 ";
+		if ($forceComponent == 3)
+			$cmd += " -forceComponent 2 ";
+	}
+
+	float $blendAmount = `optionVar -query "RH_VCP_ApplyRandom_BlendAmount"` * 0.01;
+	if ($blendAmount != 0.0)
+	{
+		string $blendMode = `optionVar -query "RH_VCP_ApplyRandom_BlendMode"`;
+		
+		$cmd += " -blend " + $blendAmount;
+		$cmd += " -blendMode \"" + $blendMode + "\"";
+	}
+	$cmd += " -channelMask " + `optionVar -q RH_VCP_ChannelMask` + " ";
+
+	eval($cmd);
+}
+
+global proc
+VCP_ApplySliderRandomiseCommand(float $amount)
+{
+	string $cmd = "RH_VertexPolyColour -nodeSource -nodeDest -op 4 ";
+	$cmd += " -masterBlend " + $amount * 0.01;
+	if (`optionVar -query RH_VCP_Verbose` > 0)
+	{
+		$cmd += " -verbose ";
+	}
+	if (`optionVar -query RH_VCP_NoUndo`)
+		$cmd += " -nun ";
+
+	int $forceComponent = `optionVar -query RH_VCP_ComponentOverride`;
+	if ($forceComponent > 1)
+	{
+		if ($forceComponent == 2)
+			$cmd += " -forceComponent 1 ";
+		if ($forceComponent == 3)
+			$cmd += " -forceComponent 2 ";
+	}
+	$cmd += " -channelMask " + `optionVar -q RH_VCP_ChannelMask` + " ";
+
+	eval($cmd);
+}
+
+global proc
+VCP_FinApplyRandomise(string $sliderName)
+{
+	global string $RH_VCP_OldWireDisplay;
+	global int $VCP_AdjustSliderMoving;
+
+	float $amount = `floatSliderGrp -query -value $sliderName`;
+
+	floatSliderGrp -edit -value 0.0 $sliderName;
+
+	// If the amount is zero apply it BEFORE we reenable undo's
+	if ($amount == 0.0)
+	{
+		VCP_ApplySliderRandomiseCommand($amount);
+		undoInfo -swf 1;
+	}
+	else
+	{
+		undoInfo -swf 1;
+		VCP_ApplySliderRandomiseCommand($amount);
+	}
+
+	VCP_RemoveColourStoreForSelection();
+
+	$VCP_AdjustSliderMoving = 0;
+	displayPref -wireframeOnShadedActive $RH_VCP_OldWireDisplay;
+}
+
+proc
+VCP_SetupApplyRandomiseSlider(string $sliderName)
+{
+	$doCommand = ("VCP_FinApplyRandomise " + $sliderName);
+	floatSliderGrp -edit -changeCommand $doCommand $sliderName;
+	
+	$doCommand = ("VCP_ApplyRandomise " + $sliderName);
+	floatSliderGrp -edit -dragCommand $doCommand $sliderName;
+}
+
+proc
+VCP_CreateFrame_ApplyRandomiseComponents_Content()
+{
+	columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 4;
+
+		columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 0;
+
+			rowLayout -numberOfColumns 2 -cw2 200 50 -columnAlign 2 "center" -adjustableColumn2 1;
+				$SL_red=`floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kRandomComp_Red")) -field true  -cw3 60 40 40 -cc "" -pre 2 -v 1 -min 0 -max 1 -adjustableColumn 3`;
+				$BN_applyRed=`button -w 50 -label (VCP_uiRes("m_RH_VCP.kRandomComp_Apply"))`;
+			setParent ..;
+			rowLayout -numberOfColumns 2 -cw2 200 50 -columnAlign 2 "center" -adjustableColumn2 1;
+				$SL_green=`floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kRandomComp_Green")) -field true  -cw3 60 40 40 -cc "" -pre 2 -v 1 -min 0 -max 1 -adjustableColumn 3`;
+				$BN_applyGreen=`button -w 50 -label (VCP_uiRes("m_RH_VCP.kRandomComp_Apply"))`;
+			setParent ..;
+			rowLayout -numberOfColumns 2 -cw2 200 50 -columnAlign 2 "center" -adjustableColumn2 1;
+				$SL_blue=`floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kRandomComp_Blue")) -field true  -cw3 60 40 40 -cc "" -pre 2 -v 1 -min 0 -max 1 -adjustableColumn 3`;
+				$BN_applyBlue=`button -w 50 -label (VCP_uiRes("m_RH_VCP.kRandomComp_Apply"))`;
+			setParent ..;
+			rowLayout -numberOfColumns 2 -cw2 200 50 -columnAlign 2 "center" -adjustableColumn2 1;
+				$SL_alpha=`floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kRandomComp_Alpha")) -field true  -cw3 60 40 40 -cc "" -pre 2 -v 1 -min 0 -max 1 -adjustableColumn 3`;
+				$BN_applyAlpha=`button -w 50 -label (VCP_uiRes("m_RH_VCP.kRandomComp_Apply"))`;
+			setParent ..;
+			separator;
+			rowLayout -numberOfColumns 2 -cw2 200 50 -columnAlign 2 "center" -adjustableColumn2 1;
+				$SL_hue=`floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kRandomComp_Hue")) -field true  -cw3 60 40 40 -cc "" -pre 2 -v 1 -min 0 -max 1 -adjustableColumn 3`;
+				$BN_applyHue=`button -w 50 -label (VCP_uiRes("m_RH_VCP.kRandomComp_Apply"))`;
+			setParent ..;
+			rowLayout -numberOfColumns 2 -cw2 200 50 -columnAlign 2 "center" -adjustableColumn2 1;
+				$SL_sat=`floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kRandomComp_Saturation")) -field true  -cw3 60 40 40 -cc "" -pre 2 -v 1 -min 0 -max 1 -adjustableColumn 3`;
+				$BN_applySat=`button -w 50 -label (VCP_uiRes("m_RH_VCP.kRandomComp_Apply"))`;
+			setParent ..;
+			rowLayout -numberOfColumns 2 -cw2 200 50 -columnAlign 2 "center" -adjustableColumn2 1;
+				$SL_val=`floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kRandomComp_Value")) -field true  -cw3 60 40 40 -cc "" -pre 2 -v 1 -min 0 -max 1 -adjustableColumn 3`;
+				$BN_applyVal=`button -w 50 -label (VCP_uiRes("m_RH_VCP.kRandomComp_Apply"))`;
+			setParent ..;
+		setParent ..;
+		separator;
+		rowLayout -numberOfColumns 2 -cw2 150 100 -adjustableColumn2 2 -columnAttach 1 "both" 2 -columnAttach 2 "both" 2;
+			string $OM_blendMode = `optionMenuGrp -cw2 60 150 -adjustableColumn 2 -columnAlign 1 "right" -label "Blending"`;
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_Replace")) -ann "Replace";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_Add")) -ann "Add";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_Subtract")) -ann "Subtract";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_Multiply")) -ann "Multiply";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_Difference")) -ann "Difference";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_Screen")) -ann "Screen";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_Overlay")) -ann "Overlay";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_LightenOnly")) -ann "Lighten Only";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_DarkenOnly")) -ann "Darken Only";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_Dodge")) -ann "Dodge";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_Burn")) -ann "Burn";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_HueReplace")) -ann "Hue Replace";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_SaturationReplace")) -ann "Saturation Replace";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_ColourReplace")) -ann "Colour Replace";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_ValueReplace")) -ann "Value Replace";
+			$SL_blend=`floatSliderGrp -l "" -field true -el "%" -cw4 1 35 1 20 -pre 0 -v 100 -min 0 -max 100 -adjustableColumn 3 `;
+		setParent ..;
+		separator;
+		$SL_apply=`floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kRandomComp_Apply")) -field true  -cw3 60 40 1 -cc "" -pre 2 -v 0 -min 0 -max 100 -adjustableColumn 3`;
+		$BN_apply=`button -w 100 -h 30 -label (VCP_uiRes("m_RH_VCP.kRandomComp_Apply"))`;
+
+	setParent ..;
+
+	// Commands
+	{
+		floatSliderGrp -edit -changeCommand ("VCP_SetVarFromSliderGroup " + $SL_blend + " RH_VCP_ApplyRandom_BlendAmount") $SL_blend;
+		optionMenuGrp -edit -changeCommand ("VCP_SetVarFromOptionMenuGrp_ByAnnotation " + $OM_blendMode + " RH_VCP_ApplyRandom_BlendMode") $OM_blendMode;
+
+		floatSliderGrp -edit -changeCommand ("VCP_SetVarFromSliderGroup " + $SL_red + " RH_VCP_ApplyRandom_Red") $SL_red;
+		floatSliderGrp -edit -changeCommand ("VCP_SetVarFromSliderGroup " + $SL_green + " RH_VCP_ApplyRandom_Green") $SL_green;
+		floatSliderGrp -edit -changeCommand ("VCP_SetVarFromSliderGroup " + $SL_blue + " RH_VCP_ApplyRandom_Blue") $SL_blue;
+		floatSliderGrp -edit -changeCommand ("VCP_SetVarFromSliderGroup " + $SL_alpha + " RH_VCP_ApplyRandom_Alpha") $SL_alpha;
+		floatSliderGrp -edit -changeCommand ("VCP_SetVarFromSliderGroup " + $SL_hue + " RH_VCP_ApplyRandom_Hue") $SL_hue;
+		floatSliderGrp -edit -changeCommand ("VCP_SetVarFromSliderGroup " + $SL_sat + " RH_VCP_ApplyRandom_Sat") $SL_sat;
+		floatSliderGrp -edit -changeCommand ("VCP_SetVarFromSliderGroup " + $SL_val + " RH_VCP_ApplyRandom_Val") $SL_val;
+
+		button -e -command ("VCP_ApplySliderRandomiseApplyChannelCommand r RH_VCP_ApplyRandom_Red") $BN_applyRed;
+		button -e -command ("VCP_ApplySliderRandomiseApplyChannelCommand g RH_VCP_ApplyRandom_Green") $BN_applyGreen;
+		button -e -command ("VCP_ApplySliderRandomiseApplyChannelCommand b RH_VCP_ApplyRandom_Blue") $BN_applyBlue;
+		button -e -command ("VCP_ApplySliderRandomiseApplyChannelCommand a RH_VCP_ApplyRandom_Alpha") $BN_applyAlpha;
+		button -e -command ("VCP_ApplySliderRandomiseApplyChannelCommand h RH_VCP_ApplyRandom_Hue") $BN_applyHue;
+		button -e -command ("VCP_ApplySliderRandomiseApplyChannelCommand s RH_VCP_ApplyRandom_Sat") $BN_applySat;
+		button -e -command ("VCP_ApplySliderRandomiseApplyChannelCommand v RH_VCP_ApplyRandom_Val") $BN_applyVal;
+		
+		string $cmd;
+		$cmd = "VCP_ApplySliderRandomiseApply100Command false";
+		button -edit -command ("eval " + $cmd) $BN_apply;
+
+		VCP_SetupApplyRandomiseSlider($SL_apply);
+	}
+
+	// Settings
+	{
+		floatSliderGrp -edit -value `optionVar -query RH_VCP_ApplyRandom_BlendAmount` $SL_blend;
+		RH_SetOptionMenuGrpValue_ByAnnotation($OM_blendMode, `optionVar -query RH_VCP_ApplyRandom_BlendMode`);
+
+		floatSliderGrp -edit -value `optionVar -query RH_VCP_ApplyRandom_Red` $SL_red;
+		floatSliderGrp -edit -value `optionVar -query RH_VCP_ApplyRandom_Green` $SL_green;
+		floatSliderGrp -edit -value `optionVar -query RH_VCP_ApplyRandom_Blue` $SL_blue;
+		floatSliderGrp -edit -value `optionVar -query RH_VCP_ApplyRandom_Alpha` $SL_alpha;
+		floatSliderGrp -edit -value `optionVar -query RH_VCP_ApplyRandom_Hue` $SL_hue;
+		floatSliderGrp -edit -value `optionVar -query RH_VCP_ApplyRandom_Sat` $SL_sat;
+		floatSliderGrp -edit -value `optionVar -query RH_VCP_ApplyRandom_Val` $SL_val;
+	}
+}
+
+global proc
+VCP_CreateFrame_ApplyRandomiseComponents(int $hasFrame)
+{
+	if ($hasFrame)
+	{
+		int $frameCollapse = `optionVar -query "RH_VCP_FrameApplyRandom"`;
+		$frame = `frameLayout -label (VCP_uiRes("m_RH_VCP.kRandomComp_FrameTitle"))
+					-labelIndent 4
+					-borderStyle "etchedIn"
+					-collapsable true
+					-collapse $frameCollapse
+					-marginWidth 4
+					-marginHeight 4`;
+			VCP_CreateFrame_ApplyRandomiseComponents_Content();
+		setParent ..;
+
+		// Commands
+		frameLayout	-e -collapseCommand "optionVar -intValue RH_VCP_FrameApplyRandom 1" $frame;
+		frameLayout	-e -expandCommand "optionVar -intValue RH_VCP_FrameApplyRandom 0" $frame;
+	}
+	else
+	{
+		$frame = `frameLayout
+					-labelVisible false
+					-borderStyle "etchedIn"
+					-collapsable false
+					-marginWidth 4
+					-marginHeight 4`;
+			VCP_CreateFrame_ApplyRandomiseComponents_Content();
+		setParent ..;
+	}
+}

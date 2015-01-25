@@ -1,0 +1,21 @@
+//
+// Module Definition
+//
+// 1) You must edit this path to point to the folder where UVAutoRatio is installed
+//    Choosing either the Windows, Mac or Linux style path.
+//
+// 2) This file must be copied into the "modules" folder of Maya, which is usually found in:
+//
+//    C:\Program Files\Autodesk\Maya2008\modules                     for Windows
+//    /usr/autodesk/maya2008/modules                                 for Linux
+//    /Applications/Autodesk/maya2008/maya.app/Contents/modules/     for Mac OSX
+//
+//    It may need to be created if it doesn't already exist
+//
+// Windows path
+//+ VertexChameleon 1.0 C:\Program Files\RenderHeads\VertexChameleon\
+// Linux path
+//+ VertexChameleon 1.0 /usr/user_name/VertexChameleon/
+// Mac path
+//+ VertexChameleon 1.0 /Applications/VertexChameleon/
+

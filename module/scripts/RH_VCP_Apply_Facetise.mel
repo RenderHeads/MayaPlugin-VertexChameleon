@@ -1,0 +1,68 @@
+//
+// Vertex Chameleon Maya Plugin Source Code
+// Copyright (C) 2007-2014 RenderHeads Ltd.
+//
+// This source is available for distribution and/or modification
+// only under the terms of the MIT license.  All rights reserved.
+//
+// The source is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// FITNESS FOR A PARTICULAR PURPOSE. See the MIT license
+// for more details.
+//
+
+global proc
+VCP_Apply_Facetise()
+{
+	string $cmd = "RH_VertexPolyColour -op 502 ";
+
+	if (`optionVar -query RH_VCP_Verbose` > 0)
+		$cmd += " -verbose ";
+	if (`optionVar -query RH_VCP_NoUndo`)
+		$cmd += " -nun ";
+
+	$cmd += " -channelMask " + `optionVar -q RH_VCP_ChannelMask` + " ";
+
+	ConvertSelectionToFaces();
+	eval($cmd);
+}
+
+proc
+VCP_CreateFrame_Facetise_Content()
+{
+	columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 0;
+		button -label (VCP_uiRes("m_RH_VCP.kFacetise_Apply")) -command "VCP_Apply_Facetise();";
+	setParent ..;
+}
+
+global proc
+VCP_CreateFrame_Facetise(int $hasFrame)
+{
+	if ($hasFrame)
+	{
+		int $frameCollapse = `optionVar -query "RH_VCP_FrameFacetise"`;
+		$frame = `frameLayout -label (VCP_uiRes("m_RH_VCP.kFacetise_FrameTitle"))
+					-labelIndent 4
+					-borderStyle "etchedIn"
+					-collapsable true
+					-collapse $frameCollapse
+					-marginWidth 4
+					-marginHeight 4`;
+			VCP_CreateFrame_Facetise_Content();
+		setParent ..;
+
+		frameLayout	-e -collapseCommand "optionVar -intValue RH_VCP_FrameFacetise 1" $frame;
+		frameLayout	-e -expandCommand "optionVar -intValue RH_VCP_FrameFacetise 0" $frame;
+	}
+	else
+	{
+		$frame = `frameLayout
+					-labelVisible false
+					-borderStyle "etchedIn"
+					-collapsable false
+					-marginWidth 4
+					-marginHeight 4`;
+			VCP_CreateFrame_Facetise_Content();
+		setParent ..;
+	}
+}

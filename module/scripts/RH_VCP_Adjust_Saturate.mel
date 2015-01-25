@@ -1,0 +1,160 @@
+//
+// Vertex Chameleon Maya Plugin Source Code
+// Copyright (C) 2007-2014 RenderHeads Ltd.
+//
+// This source is available for distribution and/or modification
+// only under the terms of the MIT license.  All rights reserved.
+//
+// The source is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// FITNESS FOR A PARTICULAR PURPOSE. See the MIT license
+// for more details.
+//
+
+proc
+VCP_SetupSaturateRow(string $name, string $channel, string $minVar, string $maxVar)
+{
+	float $min = `optionVar -q $minVar`;
+	float $max = `optionVar -q $maxVar`;
+
+	rowLayout -numberOfColumns 4 -columnWidth4 60 50 50 50 -adjustableColumn4 4
+		-columnAlign 1 "center" -columnAlign 2 "left" -columnAlign 3 "left" -columnAlign 4 "center";
+		text -label $name;
+		string $ffMin = `floatField -pre 2 -value $min -w 50 -minValue 0`;
+		string $ffMax = `floatField -pre 2 -value $max -w 50 -minValue 0`;
+		string $apply = `button -label (VCP_uiRes("m_RH_VCP.kSaturate_Apply"))`;
+	setParent..;
+
+	$doCommand = "VCP_SetVarFromFloatField " + $ffMin + " " + $minVar;
+	floatField -edit -changeCommand $doCommand $ffMin;
+
+	$doCommand = "VCP_SetVarFromFloatField " + $ffMax + " " + $maxVar;
+	floatField -edit -changeCommand $doCommand $ffMax;
+
+	$cmd = "VCP_SaturateChannel " +$channel + " " + $minVar + " " + $maxVar;
+	button -e -command $cmd $apply;
+}
+
+global proc
+VCP_SaturateChannel(string $channel, string $minField, string $maxField)
+{
+	float $min = `optionVar -q $minField`;
+	float $max = `optionVar -q $maxField`;
+
+	string $cmd = "RH_VertexPolyColour -op 309 -clamp" + $channel + " " + $min + " " + $max;
+	if (`optionVar -query RH_VCP_NoUndo`)
+		$cmd += " -nun ";
+
+	$cmd += " -channelMask " + `optionVar -q RH_VCP_ChannelMask` + " ";
+	eval($cmd);
+}
+
+global proc
+VCP_SaturateRGBA()
+{
+	float $minR = `optionVar -q RH_VCP_SaturateMinR`;
+	float $maxR = `optionVar -q RH_VCP_SaturateMaxR`;
+	float $minG = `optionVar -q RH_VCP_SaturateMinG`;
+	float $maxG = `optionVar -q RH_VCP_SaturateMaxG`;
+	float $minB = `optionVar -q RH_VCP_SaturateMinB`;
+	float $maxB = `optionVar -q RH_VCP_SaturateMaxB`;
+	float $minA = `optionVar -q RH_VCP_SaturateMinA`;
+	float $maxA = `optionVar -q RH_VCP_SaturateMaxA`;
+
+	string $cmd = "RH_VertexPolyColour -op 309 ";
+	if (`optionVar -query RH_VCP_NoUndo`)
+		$cmd += " -nun ";
+
+	$cmd += " -clampR " + $minR + " " + $maxR;
+	$cmd += " -clampG " + $minG + " " + $maxG;
+	$cmd += " -clampB " + $minB + " " + $maxB;
+	$cmd += " -clampA " + $minA + " " + $maxA;
+	$cmd += " -channelMask " + `optionVar -q RH_VCP_ChannelMask` + " ";
+	eval($cmd);
+}
+
+global proc
+VCP_SaturateHSV()
+{
+	float $minH = `optionVar -q RH_VCP_SaturateMinH`;
+	float $maxH = `optionVar -q RH_VCP_SaturateMaxH`;
+	float $minS = `optionVar -q RH_VCP_SaturateMinS`;
+	float $maxS = `optionVar -q RH_VCP_SaturateMaxS`;
+	float $minV = `optionVar -q RH_VCP_SaturateMinV`;
+	float $maxV = `optionVar -q RH_VCP_SaturateMaxV`;
+
+	string $cmd = "RH_VertexPolyColour -op 309 ";
+	if (`optionVar -query RH_VCP_NoUndo`)
+		$cmd += " -nun ";
+
+	$cmd += " -clampH " + $minH + " " + $maxH;
+	$cmd += " -clampS " + $minS + " " + $maxS;
+	$cmd += " -clampV " + $minV + " " + $maxV;
+	$cmd += " -channelMask " + `optionVar -q RH_VCP_ChannelMask` + " ";
+	eval($cmd);
+}
+
+proc
+VCP_CreateFrame_Saturate_Content()
+{
+	columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 0;
+
+	rowLayout -numberOfColumns 4 -columnWidth4 60 50 50 50 -adjustableColumn4 4
+		-columnAlign 1 "center" -columnAlign 2 "left" -columnAlign 3 "left";
+		text -label "";
+		text -label (VCP_uiRes("m_RH_VCP.kSaturate_Min"));
+		text -label (VCP_uiRes("m_RH_VCP.kSaturate_Max"));
+		text -label "";
+	setParent..;
+
+	VCP_SetupSaturateRow((VCP_uiRes("m_RH_VCP.kSaturate_Red")), "R", "RH_VCP_SaturateMinR", "RH_VCP_SaturateMaxR");
+	VCP_SetupSaturateRow((VCP_uiRes("m_RH_VCP.kSaturate_Green")), "G", "RH_VCP_SaturateMinG", "RH_VCP_SaturateMaxG");
+	VCP_SetupSaturateRow((VCP_uiRes("m_RH_VCP.kSaturate_Blue")), "B", "RH_VCP_SaturateMinB", "RH_VCP_SaturateMaxB");
+	VCP_SetupSaturateRow((VCP_uiRes("m_RH_VCP.kSaturate_Alpha")), "A", "RH_VCP_SaturateMinA", "RH_VCP_SaturateMaxA");
+
+	string $applyRGBA = `button -label (VCP_uiRes("m_RH_VCP.kSaturate_ApplyRGBA")) -h 30`;
+
+	VCP_SetupSaturateRow((VCP_uiRes("m_RH_VCP.kSaturate_Hue")), "H", "RH_VCP_SaturateMinH", "RH_VCP_SaturateMaxH");
+	VCP_SetupSaturateRow((VCP_uiRes("m_RH_VCP.kSaturate_Saturation")), "S", "RH_VCP_SaturateMinS", "RH_VCP_SaturateMaxS");
+	VCP_SetupSaturateRow((VCP_uiRes("m_RH_VCP.kSaturate_Value")), "V", "RH_VCP_SaturateMinV", "RH_VCP_SaturateMaxV");
+
+	string $applyHSV = `button -label (VCP_uiRes("m_RH_VCP.kSaturate_ApplyHSV")) -h 30`;
+
+	setParent ..;
+
+	button -e -command "VCP_SaturateRGBA" $applyRGBA;
+	button -e -command "VCP_SaturateHSV" $applyHSV;
+}
+
+
+global proc
+VCP_CreateFrame_Saturate(int $hasFrame)
+{
+	if ($hasFrame)
+	{
+		int $frameCollapse = `optionVar -query "RH_VCP_FrameAdjustSaturate"`;
+		$frame = `frameLayout -label (VCP_uiRes("m_RH_VCP.kSaturate_FrameTitle"))
+					-labelIndent 4
+					-borderStyle "etchedIn"
+					-collapsable true
+					-collapse $frameCollapse
+					-marginWidth 4
+					-marginHeight 4`;
+			VCP_CreateFrame_Saturate_Content();
+		setParent ..;
+
+		frameLayout	-e -collapseCommand "optionVar -intValue RH_VCP_FrameAdjustSaturate 1" $frame;
+		frameLayout	-e -expandCommand "optionVar -intValue RH_VCP_FrameAdjustSaturate 0" $frame;
+	}
+	else
+	{
+		$frame = `frameLayout
+					-labelVisible false
+					-borderStyle "etchedIn"
+					-collapsable false
+					-marginWidth 4
+					-marginHeight 4`;
+			VCP_CreateFrame_Saturate_Content();
+		setParent ..;
+	}
+}

@@ -1,0 +1,353 @@
+//
+// Vertex Chameleon Maya Plugin Source Code
+// Copyright (C) 2007-2014 RenderHeads Ltd.
+//
+// This source is available for distribution and/or modification
+// only under the terms of the MIT license.  All rights reserved.
+//
+// The source is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// FITNESS FOR A PARTICULAR PURPOSE. See the MIT license
+// for more details.
+//
+
+global int $VCP_AdjustSliderMoving = 0;
+
+global proc
+VCP_Adjust3DTexture(string $sliderName)
+{
+	global string $RH_VCP_OldWireDisplay;
+	global int $VCP_AdjustSliderMoving;
+
+	float $amount = `floatSliderGrp -query -value $sliderName`;
+
+	if ($amount != 0.0)
+	{
+		if ($VCP_AdjustSliderMoving == 0)
+		{
+			// save source
+			VCP_CreateVertexColourStoreForSelection();
+
+			// draw operation
+			VCP_AdjustSlider3DTextureApply100Command(true);
+
+			// reset to source
+			VCP_AdjustSlider3DTextureCommand(0.0);
+
+			$VCP_AdjustSliderMoving = 1;
+			$RH_VCP_OldWireDisplay = `displayPref -q -wsa`;
+			displayPref -wireframeOnShadedActive "none";
+			undoInfo -swf 0;
+		}
+	}
+	if ($VCP_AdjustSliderMoving == 1)
+	{
+		VCP_AdjustSlider3DTextureCommand($amount);
+	}
+}
+
+global proc
+VCP_AdjustSlider3DTextureApply100Command(int $nodeWrite)
+{
+	string $cmd = "RH_VertexPolyColour -op 900 -texture3DNode RH_VCP_3DTextureNode ";
+	if ($nodeWrite)
+		$cmd += " -nodeWriteDest ";
+
+	if (`optionVar -query RH_VCP_Verbose` > 0)
+	{
+		$cmd += " -verbose ";
+	}
+	if (`optionVar -query RH_VCP_NoUndo`)
+		$cmd += " -nun ";
+
+/*
+	float $seed = `optionVar -q RH_VCP_3DTexture_RandomSeed` * 321.123;
+	$cmd += " -texture3DOffset " + $seed + " " + $seed + " " + $seed;
+
+	float $sx = `optionVar -q RH_VCP_3DTexture_ScaleX`;
+	$cmd += " -nsx " + $sx;
+	$cmd += " -nsy " + $sx;
+	$cmd += " -nsz " + $sx;*/
+
+	float $blendAmount = `optionVar -query "RH_VCP_3DTexture_BlendAmount"` * 0.01;
+	if ($blendAmount != 0.0)
+	{
+		string $blendMode = `optionVar -query "RH_VCP_3DTexture_BlendMode"`;
+		
+		$cmd += " -blend " + $blendAmount;
+		$cmd += " -blendMode \"" + $blendMode + "\"";
+	}
+	$cmd += " -forceComponent 1 ";
+	$cmd += " -channelMask " + `optionVar -q RH_VCP_ChannelMask` + " ";
+
+	eval($cmd);
+}
+
+global proc
+VCP_AdjustSlider3DTextureCommand(float $amount)
+{
+	string $cmd = "RH_VertexPolyColour -op 4 -nodeSource -nodeDest ";
+	$cmd += " -masterBlend " + $amount * 0.01;
+	if (`optionVar -query RH_VCP_Verbose` > 0)
+	{
+		$cmd += " -verbose ";
+	}
+	if (`optionVar -query RH_VCP_NoUndo`)
+		$cmd += " -nun ";
+/*
+	float $seed = `optionVar -q RH_VCP_3DTexture_RandomSeed` * 321.123;
+	$cmd += " -texture3DOffset " + $seed + " " + $seed + " " + $seed;
+
+	float $sx = `optionVar -q RH_VCP_3DTexture_ScaleX`;
+	$cmd += " -nsx " + $sx;
+	$cmd += " -nsy " + $sx;
+	$cmd += " -nsz " + $sx;*/
+
+	$cmd += " -forceComponent 1 ";
+	$cmd += " -channelMask " + `optionVar -q RH_VCP_ChannelMask` + " ";
+
+	eval($cmd);
+}
+
+global proc
+VCP_FinAdjust3DTexture(string $sliderName)
+{
+	global string $RH_VCP_OldWireDisplay;
+	global int $VCP_AdjustSliderMoving;
+
+	float $amount = `floatSliderGrp -query -value $sliderName`;
+
+	floatSliderGrp -edit -value 0.0 $sliderName;
+
+	// If the amount is zero apply it BEFORE we reenable undo's
+	if ($amount == 0.0)
+	{
+		VCP_AdjustSlider3DTextureCommand($amount);
+		undoInfo -swf 1;
+	}
+	else
+	{
+		undoInfo -swf 1;
+		VCP_AdjustSlider3DTextureCommand($amount);
+	}
+
+	VCP_RemoveColourStoreForSelection();
+
+	$VCP_AdjustSliderMoving = 0;
+	displayPref -wireframeOnShadedActive $RH_VCP_OldWireDisplay;
+}
+
+proc
+VCP_Setup3DTextureSlider(string $sliderName)
+{
+	$doCommand = ("VCP_FinAdjust3DTexture " + $sliderName);
+	floatSliderGrp -edit -changeCommand $doCommand $sliderName;
+	
+	$doCommand = ("VCP_Adjust3DTexture " + $sliderName);
+	floatSliderGrp -edit -dragCommand $doCommand $sliderName;
+}
+
+global proc
+VCP_3DTexture_Cleanup(string $portName)
+{
+	if (`objExists RH_VCP_3DTextureNode`)
+		delete RH_VCP_3DTextureNode;
+	if (`objExists RH_VCP_3DTextureTransformNode`)
+		delete RH_VCP_3DTextureTransformNode;
+	//swatchDisplayPort -e -visible false $portName;
+}
+
+global proc
+VCP_Set3DTexture(string $OM_textures, string $portName)
+{
+	string $selection[] = `ls -selection`;
+
+	VCP_3DTexture_Cleanup($portName);
+
+	string $type = RH_GetOptionMenuItemAnnotation($OM_textures);
+	string $myShader = `shadingNode -asTexture -name RH_VCP_3DTextureNode $type`;
+
+	// connect and hide placement node
+	string $placement = `shadingNode -asUtility -name RH_VCP_3DTextureTransformNode place3dTexture`;
+	connectAttr ($placement + ".worldInverseMatrix") ($myShader + ".placementMatrix");
+	setAttr ($placement + ".visibility") 0;
+
+	VCP_View3DTexture($myShader, $portName);
+
+	select -r $selection;
+}
+
+global proc
+VCP_View3DTexture(string $myShader, string $portName)
+{
+	if (`objExists $myShader`)
+	{
+		// Note: we need to do this weird manage and size change so the port draws at the correct size and first time
+		//swatchDisplayPort -e -visible true $portName;
+		swatchDisplayPort -e -m false $portName;
+		swatchDisplayPort -e -renderSize 64 $portName;
+		swatchDisplayPort -e -pressCommand ("showEditor " + $myShader) $portName;
+		swatchDisplayPort -e -sn $myShader $portName;
+		swatchDisplayPort -e -renderSize 128 $portName;
+		swatchDisplayPort -e -m true $portName;
+	}
+}
+
+global proc
+VCP_3DTexture_UpdateScale(string $slider)
+{
+	VCP_SetVarFromSliderGroup($slider, "RH_VCP_3DTexture_ScaleX");
+	if (`objExists RH_VCP_3DTextureTransformNode`)
+	{
+		$val = `floatSliderGrp -q -value $slider`;
+		if ($val < 0.00001)
+			$val = 0.00001;
+		$val = 1.0 / $val;
+		setAttr ("RH_VCP_3DTextureTransformNode.scale") $val $val $val;
+	}
+}
+
+global proc
+VCP_3DTexture_UpdateRandomSeed(string $slider)
+{
+	VCP_SetVarFromSliderGroup($slider, "RH_VCP_3DTexture_RandomSeed");
+	if (`objExists RH_VCP_3DTextureTransformNode`)
+	{
+		$val = `floatSliderGrp -q -value $slider`;
+		setAttr ("RH_VCP_3DTextureTransformNode.translate") ($val * 321.123613) ($val * 124.87942) ($val * 7.13572);
+	}
+}
+
+proc
+VCP_CreateFrame_3DTexture_Content()
+{
+	columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 4;
+
+		/*rowLayout -numberOfColumns 3 -cw3 165 55 55 -adjustableColumn3 3 -columnAlign 2 "center";
+			string $OM_textures = `optionMenuGrp -cw2 60 100 -adjustableColumn 2 -columnAlign 1 "right" -label "Texture"`;
+				//menuItem -label "brownian";
+				//menuItem -label "cloud";
+				menuItem -label "crater";
+				menuItem -label "leather";
+				//menuItem -label "solidFractal";
+				menuItem -label "stucco";
+				menuItem -label "volumeNoise";
+				menuItem -label "wood";
+				$bn_create = `button -w 50 -label "Create"`;
+				$bn_delete = `button -w 50 -label "Delete"`;
+		setParent ..;
+		separator;*/
+		rowLayout -numberOfColumns 2 -cw2 140 90 -adjustableColumn2 2 -columnAlign 2 "left";
+			columnLayout -columnAlign "center" -adjustableColumn false -rowSpacing 4;
+				string $swatch = `swatchDisplayPort -renderSize 64 -wh 128 128 -bw 0 -bgc 0 0 0 -bc 1 0.8 0`;
+				string $BN_edit = `button -label (VCP_uiRes("m_RH_VCP.k3DTexture_EditAttribs")) -w 128`;
+			setParent ..;
+			columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 4;
+				columnLayout -columnAlign "center" -adjustableColumn false -rowSpacing 0;
+					text -label (VCP_uiRes("m_RH_VCP.k3DTexture_TextureType"));
+					string $OM_textures = `optionMenu`;
+						//menuItem -label "brownian";
+						//menuItem -label "cloud";
+						//menuItem -label "solidFractal";
+						menuItem -label (VCP_uiRes("m_RH_VCP.k3DTexture_Crater")) -ann "crater";
+						menuItem -label (VCP_uiRes("m_RH_VCP.k3DTexture_Leather")) -ann "leather";
+						menuItem -label (VCP_uiRes("m_RH_VCP.k3DTexture_Stucco")) -ann "stucco";
+						menuItem -label (VCP_uiRes("m_RH_VCP.k3DTexture_VolumeNoise")) -ann "volumeNoise";
+						menuItem -label (VCP_uiRes("m_RH_VCP.k3DTexture_Wood")) -ann "wood";
+						$bn_create = `button -w 60 -label (VCP_uiRes("m_RH_VCP.k3DTexture_Create"))`;
+						$bn_delete = `button -w 60 -label (VCP_uiRes("m_RH_VCP.k3DTexture_Delete"))`;
+				setParent ..;
+			setParent ..;
+		setParent ..;
+		separator;
+		$SL_scale=`floatSliderGrp -l (VCP_uiRes("m_RH_VCP.k3DTexture_Scale")) -field true  -cw3 60 40 40 -cc "" -pre 3 -v 1 -min 0 -max 10 -adjustableColumn 3`;
+		$SL_seed=`floatSliderGrp -l (VCP_uiRes("m_RH_VCP.k3DTexture_RandomSeed")) -field true  -cw3 60 40 40 -cc "" -pre 0 -v 1 -min 0 -max 200 -adjustableColumn 3`;
+		separator;
+		rowLayout -numberOfColumns 2 -cw2 150 100 -adjustableColumn2 2 -columnAttach 1 "both" 2 -columnAttach 2 "both" 2;
+			string $OM_blendMode = `optionMenuGrp -cw2 60 150 -adjustableColumn 2 -columnAlign 1 "right" -label (VCP_uiRes("m_RH_VCP.k3DTexture_Blending"))`;
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_Replace")) -ann "Replace";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_Add")) -ann "Add";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_Subtract")) -ann "Subtract";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_Multiply")) -ann "Multiply";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_Difference")) -ann "Difference";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_Screen")) -ann "Screen";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_Overlay")) -ann "Overlay";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_LightenOnly")) -ann "Lighten Only";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_DarkenOnly")) -ann "Darken Only";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_Dodge")) -ann "Dodge";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_Burn")) -ann "Burn";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_HueReplace")) -ann "Hue Replace";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_SaturationReplace")) -ann "Saturation Replace";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_ColourReplace")) -ann "Colour Replace";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kBlendMode_ValueReplace")) -ann "Value Replace";
+			$SL_blend=`floatSliderGrp -l "" -field true -el "%" -cw4 1 35 1 20 -pre 0 -v 100 -min 0 -max 100 -adjustableColumn 3 `;
+		setParent ..;
+		separator;
+		$SL_apply=`floatSliderGrp -l (VCP_uiRes("m_RH_VCP.k3DTexture_Apply")) -field true  -cw3 60 40 1 -cc "" -pre 2 -v 0 -min 0 -max 100 -adjustableColumn 3`;
+		$BN_apply=`button -w 100 -h 30 -label (VCP_uiRes("m_RH_VCP.k3DTexture_Apply"))`;
+
+	setParent ..;
+
+	// Commands
+	floatSliderGrp -edit -changeCommand ("VCP_SetVarFromSliderGroup " + $SL_blend + " RH_VCP_3DTexture_BlendAmount") $SL_blend;
+	optionMenuGrp -edit -changeCommand ("VCP_SetVarFromOptionMenuGrp_ByAnnotation " + $OM_blendMode + " RH_VCP_3DTexture_BlendMode") $OM_blendMode;
+
+
+	floatSliderGrp -edit -changeCommand ("VCP_3DTexture_UpdateScale " + $SL_scale) $SL_scale;
+	floatSliderGrp -edit -changeCommand ("VCP_3DTexture_UpdateRandomSeed " + $SL_seed) $SL_seed;
+	floatSliderGrp -edit -dragCommand ("VCP_3DTexture_UpdateScale " + $SL_scale) $SL_scale;
+	floatSliderGrp -edit -dragCommand ("VCP_3DTexture_UpdateRandomSeed " + $SL_seed) $SL_seed;
+
+	string $cmd;
+
+	$cmd = "VCP_Set3DTexture " + $OM_textures + " " + $swatch + ";VCP_3DTexture_UpdateScale " + $SL_scale + ";VCP_3DTexture_UpdateRandomSeed " + $SL_seed;
+	button -e -command $cmd $bn_create;
+	$cmd = ("VCP_3DTexture_Cleanup " + $swatch);
+	button -e -command $cmd $bn_delete;
+	
+	$cmd = "VCP_AdjustSlider3DTextureApply100Command false";
+	button -edit -command ("eval " + $cmd) $BN_apply;
+
+	VCP_Setup3DTextureSlider($SL_apply);
+	VCP_View3DTexture("RH_VCP_3DTextureNode", $swatch);
+
+	button -e -command ("showEditor RH_VCP_3DTextureNode") $BN_edit;
+
+	floatSliderGrp -edit -value `optionVar -query RH_VCP_3DTexture_ScaleX` $SL_scale;
+	floatSliderGrp -edit -value `optionVar -query RH_VCP_3DTexture_RandomSeed` $SL_seed;
+	floatSliderGrp -edit -value `optionVar -query RH_VCP_3DTexture_BlendAmount` $SL_blend;
+	RH_SetOptionMenuGrpValue_ByAnnotation($OM_blendMode, `optionVar -query RH_VCP_3DTexture_BlendMode`);
+	VCP_3DTexture_UpdateScale($SL_scale);
+	VCP_3DTexture_UpdateRandomSeed($SL_seed);
+}
+
+global proc
+VCP_CreateFrame_3DTexture(int $hasFrame)
+{
+	if ($hasFrame)
+	{
+		int $frameCollapse = `optionVar -query "RH_VCP_Frame3DTexture"`;
+		$frame = `frameLayout -label (VCP_uiRes("m_RH_VCP.k3DTexture_FrameTitle"))
+					-labelIndent 4
+					-borderStyle "etchedIn"
+					-collapsable true
+					-collapse $frameCollapse
+					-marginWidth 4
+					-marginHeight 4`;
+			VCP_CreateFrame_3DTexture_Content();
+		setParent ..;
+		frameLayout	-e -collapseCommand "optionVar -intValue RH_VCP_Frame3DTexture 1" $frame;
+		frameLayout	-e -expandCommand "optionVar -intValue RH_VCP_Frame3DTexture 0" $frame;
+	}
+	else
+	{
+		$frame = `frameLayout
+					-labelVisible false
+					-borderStyle "etchedIn"
+					-collapsable false
+					-marginWidth 4
+					-marginHeight 4`;
+			VCP_CreateFrame_3DTexture_Content();
+		setParent ..;
+	}
+}

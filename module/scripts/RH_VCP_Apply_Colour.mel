@@ -1,0 +1,789 @@
+//
+// Vertex Chameleon Maya Plugin Source Code
+// Copyright (C) 2007-2014 RenderHeads Ltd.
+//
+// This source is available for distribution and/or modification
+// only under the terms of the MIT license.  All rights reserved.
+//
+// The source is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// FITNESS FOR A PARTICULAR PURPOSE. See the MIT license
+// for more details.
+//
+
+global string $VCP_ApplySliders[];
+global string $VCP_ApplyCanvasRGB, $VCP_ApplyCanvasAlpha;
+global float $VCP_Apply_RGBA[];
+global float $VCP_Apply_HSV[];
+global int $VCP_AdjustSliderMoving = 0;
+
+proc
+VCP_SetupAbsSlider(string $sliderName, string $channel)
+{
+	$doCommand = ("VCP_AdjustAbsSlider " + $sliderName + " " + $channel + ";");
+	floatSliderGrp -edit -dragCommand $doCommand $sliderName;
+
+	$doCommand = ("VCP_FinAbsSlider " + $sliderName + " " + $channel + ";");
+	floatSliderGrp -edit -changeCommand $doCommand $sliderName;
+}
+
+global proc
+VCP_ApplyColourApply(int $mode)
+{
+	global float $VCP_Apply_RGBA[];
+	global float $VCP_Apply_HSV[];
+
+	string $cmd = "RH_VertexPolyColour ";
+	switch ($mode)
+	{
+	case 0:
+		$cmd += " -op 400 -colorR " + $VCP_Apply_RGBA[0];
+		break;
+	case 1:
+		$cmd += " -op 400 -colorG " + $VCP_Apply_RGBA[1];
+		break;
+	case 2:
+		$cmd += " -op 400 -colorB " + $VCP_Apply_RGBA[2];
+		break;
+	case 3:
+		$cmd += " -op 400 -colorA " + $VCP_Apply_RGBA[3];
+		break;
+	case 4:
+		$cmd += " -op 401 -colorH " + $VCP_Apply_HSV[0];
+		break;
+	case 5:
+		$cmd += " -op 401 -colorS " + $VCP_Apply_HSV[1];
+		break;
+	case 6:
+		$cmd += " -op 401 -colorV " + $VCP_Apply_HSV[2];
+		break;
+	case 7:
+		$cmd += " -op 400 -colorR " + $VCP_Apply_RGBA[0];
+		$cmd += " -colorG " + $VCP_Apply_RGBA[1];
+		$cmd += " -colorB " + $VCP_Apply_RGBA[2];
+		$cmd += " -colorA " + $VCP_Apply_RGBA[3];
+		break;
+	}
+
+	if (`optionVar -query RH_VCP_Verbose` > 0)
+	{
+		$cmd += " -verbose ";
+	}
+	if (`optionVar -query RH_VCP_NoUndo`)
+		$cmd += " -nun ";
+
+	int $forceComponent = `optionVar -query RH_VCP_ComponentOverride`;
+	if ($forceComponent > 1)
+	{
+		if ($forceComponent == 2)
+			$cmd += " -forceComponent 1 ";
+		if ($forceComponent == 3)
+			$cmd += " -forceComponent 2 ";
+	}
+	$cmd += " -channelMask " + `optionVar -q RH_VCP_ChannelMask` + " ";
+
+	eval($cmd);
+}
+
+global proc
+VCP_CreateFrame_ApplyColour_Content()
+{
+	global float $VCP_Apply_RGBA[];
+	global string $VCP_ApplySliders[];
+	global string $VCP_ApplyCanvasRGB, $VCP_ApplyCanvasAlpha;
+
+	$topLayout = `columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 4`;
+
+		rowLayout -numberOfColumns 2 -adjustableColumn2 1 -columnAttach 1 "both" 2 -columnAttach 2 "both"  2 -cw2 40 110;
+			columnLayout -columnAlign "left" -adjustableColumn true -rowSpacing 0;
+				$CN_color=`canvas -rgbValue 0 0 0 -width 40 -height 40`;
+				$CN_alpha=`canvas -rgbValue 0 0 0 -width 40 -height 10`;
+			setParent..;
+			columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 0;
+				$TC_pick=`symbolButton -height 25 -image "eyeDropper.xpm"`;
+				rowLayout -nc 2 -w 100 -cw2 60 50 -cl2 "center" "center";
+					$BN_fromSelection=`button -label (VCP_uiRes("m_RH_VCP.kApplyColour_Selection")) -height 25 -w 60 -align "center"`;
+					$AutoUpdateOnSelection = `checkBox -align "left" -w 50 -label (VCP_uiRes("m_RH_VCP.kApplyColour_Auto"))`;
+				setParent..;
+			setParent..;
+		setParent..;
+
+		int $frameCollapse = `optionVar -query "RH_VCP_FrameReplaceInner"`;
+		$frameInner = `frameLayout -label (VCP_uiRes("m_RH_VCP.kReplaceColour_FrameTitle"))
+					-labelIndent 4
+					-borderStyle "etchedIn"
+					-collapsable true
+					-collapse $frameCollapse
+					-marginWidth 4
+					-marginHeight 4`;
+
+			columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 4;
+
+				//gridLayout -numberOfColumns 2 -cellWidth 90 -cellHeight 20;
+				rowLayout -nc 2 -width 90 -height 20;
+					$AutoApply = `checkBox -align left -label (VCP_uiRes("m_RH_VCP.kReplaceColour_AutoApply"))`;
+					$AutoApplyChannel = `checkBox -align left -enable false -label (VCP_uiRes("m_RH_VCP.kReplaceColour_JustChannel"))`;
+				setParent ..;
+
+				separator;
+
+					columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 0;
+						columnLayout -columnAlign "left" -adjustableColumn true -rowSpacing 0;
+
+							$fieldWidth = 40 + 40;
+							if (RH_VCP_MayaHasBug_2011_floatSliderGrp_field_size_minimum_fixed_to_60())
+							{
+								$fieldWidth = 40 + 60;
+							}
+							rowLayout -nc 3 -adj 2 -cl3 "left" "left" "left" -cw3 $fieldWidth 15 27 -ct3 "both" "both" "both";
+								text -label "";
+
+								string $form = `formLayout -numberOfDivisions 100 MainFormLayout`;
+									int $steps = 50;
+									string $c[];
+									for ($i = 0; $i < $steps; $i++)
+									{
+										float $h = ($i * 360.0) / $steps;
+										$c[size($c)] = `canvas -hsv $h 1 1 -width (100 / $steps) -height 10 -pc ("VCP_AdjustAbsCommand (" + $h + ",\"hue\"); VCP_UpdateAbsHSVSliders();")`;
+									}
+								setParent..;
+
+								formLayout -edit 
+									-attachForm			$c[0]	"left"	0
+									-attachForm			$c[size($c)-1]	"right"	0
+									$form;
+
+								for ($i = 0; $i < $steps; $i++)
+								{
+									formLayout -edit 
+										-attachPosition     $c[$i]     "left"    2	($i*(100 / $steps))
+										$form;
+								}
+								for ($i = 0; $i < ($steps-1); $i++)
+								{
+									formLayout -edit 
+										-attachControl     $c[$i]     "right"    0	$c[$i+1]
+										$form;
+								}
+
+								text -label "";
+							setParent..;
+
+							rowLayout -numberOfColumns 2 -cw2 1 20 -columnAlign 2 "center" -adjustableColumn2 1;
+								$SL_hue=`floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kReplaceColour_Hue")) -field true -cw3 40 40 40 -pre 0 -v 0 -min 0 -max 359 -adjustableColumn3 3`;
+								$BN_hue=`button -label (VCP_uiRes("m_RH_VCP.kReplaceColour_HueS"))`;
+							setParent ..;
+						setParent ..;
+						rowLayout -numberOfColumns 2 -cw2 1 20 -columnAlign 2 "center" -adjustableColumn2 1;
+							$SL_sat=`floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kReplaceColour_Saturation")) -field true  -cw3 40 40 40 -pre 2 -v 0.999 -min 0.001 -max 0.999 -adjustableColumn 3`;
+							$BN_sat=`button -label (VCP_uiRes("m_RH_VCP.kReplaceColour_SaturationS")) -w 20`;
+						setParent ..;
+						rowLayout -numberOfColumns 2 -cw2 1 20 -columnAlign 2 "center" -adjustableColumn2 1;
+							$SL_val=`floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kReplaceColour_Value")) -field true  -cw3 40 40 40 -pre 2 -v 0.001 -min 0.001 -max 0.999 -adjustableColumn 3`;
+							$BN_val=`button -label (VCP_uiRes("m_RH_VCP.kReplaceColour_ValueS")) -w 20`;
+						setParent ..;
+						separator;
+						rowLayout -numberOfColumns 2 -cw2 1 20 -columnAlign 2 "center" -adjustableColumn2 1;
+							$SL_red=`floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kReplaceColour_Red")) -field true  -cw3 40 40 50 -pre 2 -v 0 -min 0 -max 1 -backgroundColor 1.0 0.0 0.0 -adjustableColumn 3`;			
+							$BN_red=`button -label (VCP_uiRes("m_RH_VCP.kReplaceColour_RedS")) -w 20`;
+						setParent ..;
+						//$SL_yellow=`floatSliderGrp -l "Yellow" -field true  -cw3 60 30 50 -cc "" -pre 2 -v 0 -min 0 -max 1 -backgroundColor 1.0 1.0 0.0 -adjustableColumn 3`;
+						rowLayout -numberOfColumns 2 -cw2 1 20 -columnAlign 2 "center" -adjustableColumn2 1;
+							$SL_green=`floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kReplaceColour_Green")) -field true  -cw3 40 40 40 -pre 2 -v 0 -min 0 -max 1 -backgroundColor 0.0 1.0 0.0 -adjustableColumn 3`;
+							$BN_green=`button -label (VCP_uiRes("m_RH_VCP.kReplaceColour_GreenS")) -w 20`;
+						setParent ..;
+						//$SL_cyan=`floatSliderGrp -l "Cyan" -field true  -cw3 60 30 50 -cc "" -pre 2 -v 0 -min 0 -max 1 -backgroundColor 0.0 1.0 1.0 -adjustableColumn 3`;
+						rowLayout -numberOfColumns 2 -cw2 1 20 -columnAlign 2 "center" -adjustableColumn2 1;
+							$SL_blue=`floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kReplaceColour_Blue")) -field true  -cw3 40 40 40 -pre 2 -v 0 -min 0 -max 1 -backgroundColor 0.0 0.0 1.0 -adjustableColumn 3`;
+							$BN_blue=`button -label (VCP_uiRes("m_RH_VCP.kReplaceColour_BlueS")) -w 20`;
+						setParent ..;
+						//$SL_purple=`floatSliderGrp -l "Purple" -field true  -cw3 60 30 50 -cc "" -pre 2 -v 0 -min 0 -max 1 -backgroundColor 1.0 0.0 1.0 -adjustableColumn 3`;
+						rowLayout -numberOfColumns 2 -cw2 1 20 -columnAlign 2 "center" -adjustableColumn2 1;
+							$SL_alpha=`floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kReplaceColour_Alpha")) -field true  -cw3 40 40 40 -pre 2 -v 1 -min 0 -max 1 -adjustableColumn 3`;
+							$BN_alpha=`button -label (VCP_uiRes("m_RH_VCP.kReplaceColour_AlphaS")) -w 20`;
+						setParent ..;
+					setParent ..;
+				$BN_apply=`button -label (VCP_uiRes("m_RH_VCP.kReplaceColour_ReplaceRGBA"))`;
+			setParent ..;
+		setParent ..;
+		
+		frameLayout	-e -collapseCommand "optionVar -intValue RH_VCP_FrameReplaceInner 1" $frameInner;
+		frameLayout	-e -expandCommand "optionVar -intValue RH_VCP_FrameReplaceInner 0" $frameInner;
+
+		VCP_CreateFrame_BlendColour(1);
+
+	setParent ..;
+
+	if (!`optionVar -q RH_VCP_NormalisedColours`)
+	{
+		floatSliderGrp -edit -pre 0 -v 0 -min 0 -max 255 $SL_red;
+		//floatSliderGrp -edit -pre 0 -v 0 -min 0 -max 255 $SL_yellow;
+		floatSliderGrp -edit -pre 0 -v 0 -min 0 -max 255 $SL_green;
+		//floatSliderGrp -edit -pre 0 -v 0 -min 0 -max 255 $SL_cyan;
+		floatSliderGrp -edit -pre 0 -v 0 -min 0 -max 255 $SL_blue;
+		//floatSliderGrp -edit -pre 0 -v 0 -min 0 -max 255 $SL_purple;
+		floatSliderGrp -edit -pre 0 -v 0 -min 0 -max 255 $SL_alpha;
+	}
+
+	button -e -command "VCP_ApplyColourApply 0" $BN_red;
+	button -e -command "VCP_ApplyColourApply 1" $BN_green;
+	button -e -command "VCP_ApplyColourApply 2" $BN_blue;
+	button -e -command "VCP_ApplyColourApply 3" $BN_alpha;
+	button -e -command "VCP_ApplyColourApply 4" $BN_hue;
+	button -e -command "VCP_ApplyColourApply 5" $BN_sat;
+	button -e -command "VCP_ApplyColourApply 6" $BN_val;
+	button -e -command "VCP_ApplyColourApply 7" $BN_apply;
+
+	VCP_SetupAbsSlider($SL_red, "red");
+	VCP_SetupAbsSlider($SL_green, "green");
+	VCP_SetupAbsSlider($SL_blue, "blue");
+	//VCP_SetupAbsSlider($SL_yellow, "yellow");
+	//VCP_SetupAbsSlider($SL_cyan, "cyan");
+	//VCP_SetupAbsSlider($SL_purple, "purple");
+	VCP_SetupAbsSlider($SL_alpha, "alpha");
+	VCP_SetupAbsSlider($SL_hue, "hue");
+	VCP_SetupAbsSlider($SL_sat, "saturation");
+	VCP_SetupAbsSlider($SL_val, "value");
+	
+	$VCP_ApplyCanvasRGB = $CN_color;
+	$VCP_ApplyCanvasAlpha = $CN_alpha;
+	$VCP_ApplySliders[0] = $SL_red;
+	$VCP_ApplySliders[1] = $SL_green;
+	$VCP_ApplySliders[2] = $SL_blue;
+	$VCP_ApplySliders[3] = $SL_alpha;
+	$VCP_ApplySliders[4] = $SL_hue;
+	$VCP_ApplySliders[5] = $SL_sat;
+	$VCP_ApplySliders[6] = $SL_val;
+	//$VCP_ApplySliders[7] = $SL_yellow;
+	//$VCP_ApplySliders[8] = $SL_cyan;
+	//$VCP_ApplySliders[9] = $SL_purple;
+
+	// Hide the YCP sliders for now, they are a bit too complicated for the user I think
+	//control -edit -visible false $SL_yellow;
+	//control -edit -visible false $SL_cyan;
+	//control -edit -visible false $SL_purple;
+	
+	string $doCommand;
+	
+	$doCommand = "VCP_SpawnColorEditor " + $SL_alpha + " " + $SL_red + " " + $SL_green + " " + $SL_blue + " RH_VertexPolyColourWindow ";
+	canvas -edit -pressCommand $doCommand $CN_color;
+
+	$doCommand=("VCP_PickColour");
+	symbolButton -edit -command $doCommand $TC_pick;
+
+	$doCommand=("VCP_PickColourFromSelection");
+	button -edit -command $doCommand $BN_fromSelection;
+	
+	// Settings
+	{
+		$VCP_Apply_RGBA[0] = `optionVar -query "RH_VCP_ApplyColourR"`;
+		$VCP_Apply_RGBA[1] = `optionVar -query "RH_VCP_ApplyColourG"`;
+		$VCP_Apply_RGBA[2] = `optionVar -query "RH_VCP_ApplyColourB"`;
+		$VCP_Apply_RGBA[3] = `optionVar -query "RH_VCP_ApplyColourA"`;
+
+		if (`optionVar -q "RH_Col_AutoSelection"`)
+		{
+			checkBox -edit -value true $AutoUpdateOnSelection;
+			VCP_Apply_ToggleAutoSelectionOn($AutoUpdateOnSelection);
+		}
+		if (`optionVar -q "RH_Col_AutoApply"`)
+		{
+			checkBox -edit -value true $AutoApply;
+			checkBox -edit -enable true $AutoApplyChannel;
+		}
+		if (`optionVar -q "RH_Col_AutoApplyChannel"`)
+			checkBox -edit -value true $AutoApplyChannel;
+	}
+
+	VCP_UpdateAbsSliders;
+
+	$doCommand = "VCP_Apply_ToggleAutoSelectionOn " + $AutoUpdateOnSelection;
+	checkBox -e -onCommand $doCommand $AutoUpdateOnSelection;
+
+	$doCommand = "VCP_SetVarFromCheckbox " + $AutoApply + " RH_Col_AutoApply;";
+	$doCommand += "checkBox -e -enable true " + $AutoApplyChannel;
+	checkBox -edit -onCommand $doCommand $AutoApply;
+	$doCommand = "VCP_SetVarFromCheckbox " + $AutoApply + " RH_Col_AutoApply;";
+	$doCommand += "checkBox -e -enable false " + $AutoApplyChannel;
+	checkBox -edit -offCommand $doCommand $AutoApply;
+
+	$doCommand = "VCP_SetVarFromCheckbox " + $AutoApplyChannel + " RH_Col_AutoApplyChannel;";
+	checkBox -edit -changeCommand $doCommand $AutoApplyChannel;
+}
+
+global proc
+VCP_Apply_ToggleAutoSelectionOn(string $checkbox)
+{
+	optionVar -intValue RH_Col_AutoSelection 1;
+
+	string $updateCommand="VCP_PickColourFromSelection";
+	int $jobNum = `scriptJob -parent $checkbox -event SelectionChanged $updateCommand`;
+	eval($updateCommand);		// Run the script job initially
+
+	string $doCommand = "scriptJob -force -kill " + $jobNum + ";";
+	$doCommand += "optionVar -intValue RH_Col_AutoSelection 0;";
+	checkBox -e -offCommand $doCommand $checkbox;
+}
+
+global proc
+VCP_CreateFrame_ApplyColour(int $hasFrame)
+{
+	if ($hasFrame)
+	{
+		int $frameCollapse = `optionVar -query "RH_VCP_FrameApplyColour"`;
+		$frame = `frameLayout -label (VCP_uiRes("m_RH_VCP.kApplyColour_FrameTitle"))
+					-labelIndent 4
+					-borderStyle "etchedIn"
+					-collapsable true
+					-collapse $frameCollapse
+					-marginWidth 4
+					-marginHeight 4`;
+			VCP_CreateFrame_ApplyColour_Content();
+		setParent ..;
+
+		frameLayout	-e -collapseCommand "optionVar -intValue RH_VCP_FrameApplyColour 1" $frame;
+		frameLayout	-e -expandCommand "optionVar -intValue RH_VCP_FrameApplyColour 0" $frame;
+	}
+	else
+	{
+		$frame = `frameLayout
+					-labelVisible false
+					-borderStyle "etchedIn"
+					-collapsable false
+					-marginWidth 4
+					-marginHeight 4`;
+			VCP_CreateFrame_ApplyColour_Content();
+		setParent ..;
+	}
+}
+
+global proc
+VCP_SetRGBFromCanvas(string $canvasName)
+{
+	global float $VCP_Apply_RGBA[];
+
+	float $rgb[] = `canvas -query -rgbValue $canvasName`;
+	$VCP_Apply_RGBA[0] = $rgb[0];
+	$VCP_Apply_RGBA[1] = $rgb[1];
+	$VCP_Apply_RGBA[2] = $rgb[2];
+
+	VCP_UpdateAbsSliders();
+}
+
+global proc
+VCP_SetAlphaFromCanvas(string $canvasName)
+{
+	global float $VCP_Apply_RGBA[];
+
+	float $rgb[] = `canvas -query -rgbValue $canvasName`;
+	$VCP_Apply_RGBA[3] = $rgb[0];
+
+	VCP_UpdateAbsSliders();
+}
+
+global proc
+VCP_SetCanvasFromRGB(string $canvasName)
+{
+	global float $VCP_Apply_RGBA[];
+
+	canvas -edit -rgbValue $VCP_Apply_RGBA[0] $VCP_Apply_RGBA[1] $VCP_Apply_RGBA[2] $canvasName;
+	VCP_ApplyColourCanvasUpdated();
+}
+
+global proc
+VCP_ApplyColourCanvasUpdated()
+{
+	global float $VCP_Apply_RGBA[];
+
+	if (`optionVar -q RH_VCP_SyncVertexPaintColour`)
+	{
+		if (`control -exists colorPerVertexColor`)
+			colorSliderGrp -e -rgb $VCP_Apply_RGBA[0] $VCP_Apply_RGBA[1] $VCP_Apply_RGBA[2] colorPerVertexColor;
+		if (`control -exists colorPerVertexAlpha`)
+			floatSliderGrp -e -value $VCP_Apply_RGBA[3] colorPerVertexAlpha;
+
+		//string $tool = `currentCtx` ;
+		//if ($tool == "artAttrColorPerVertexContext")
+		if (`contextInfo -exists "artAttrColorPerVertexContext"`)
+		{
+			artAttrPaintVertexCtx -e -colorRGBAValue $VCP_Apply_RGBA[0] $VCP_Apply_RGBA[1] $VCP_Apply_RGBA[2] $VCP_Apply_RGBA[3] "artAttrColorPerVertexContext";
+		}
+	}
+}
+
+global proc 
+VCP_SetCanvasFromAlpha(string $canvasName)
+{
+	global float $VCP_Apply_RGBA[];
+
+	canvas -edit -rgbValue $VCP_Apply_RGBA[3] $VCP_Apply_RGBA[3] $VCP_Apply_RGBA[3] $canvasName;
+	VCP_ApplyColourCanvasUpdated();
+}
+
+global proc 
+VCP_UpdateAbsSliders()
+{
+	VCP_UpdateCanvasfromRGBA();
+	VCP_UpdateAbsRGBASliders();
+	VCP_UpdateAbsHSVSliders();
+}
+
+global proc 
+VCP_UpdateCanvasfromRGBA()
+{
+	global float $VCP_Apply_RGBA[];
+	global string $VCP_ApplyCanvasRGB, $VCP_ApplyCanvasAlpha;
+	global string $VCP_TintCanvasRGB, $VCP_TintCanvasAlpha;
+
+	if (0!=size($VCP_ApplyCanvasRGB) && `control -exists $VCP_ApplyCanvasRGB`)
+	{
+		canvas -edit -rgbValue $VCP_Apply_RGBA[0] $VCP_Apply_RGBA[1] $VCP_Apply_RGBA[2] $VCP_ApplyCanvasRGB;
+		canvas -edit -rgbValue $VCP_Apply_RGBA[3] $VCP_Apply_RGBA[3] $VCP_Apply_RGBA[3] $VCP_ApplyCanvasAlpha;
+	}
+
+	if (0!= size($VCP_TintCanvasRGB) && `control -exists $VCP_TintCanvasRGB`)
+	{
+		canvas -edit -rgbValue $VCP_Apply_RGBA[0] $VCP_Apply_RGBA[1] $VCP_Apply_RGBA[2] $VCP_TintCanvasRGB;
+		canvas -edit -rgbValue $VCP_Apply_RGBA[3] $VCP_Apply_RGBA[3] $VCP_Apply_RGBA[3] $VCP_TintCanvasAlpha;
+	}
+	VCP_ApplyColourCanvasUpdated();
+}
+
+global proc 
+VCP_UpdateCanvasfromHSV()
+{
+	global float $VCP_Apply_HSV[];
+	global string $VCP_ApplyCanvasRGB;
+	global string $VCP_TintCanvasRGB;
+
+	vector $rgb = `hsv_to_rgb <<($VCP_Apply_HSV[0]/360.0),$VCP_Apply_HSV[1],$VCP_Apply_HSV[2]>>`;
+
+	if (0!=size($VCP_ApplyCanvasRGB) && `control -exists $VCP_ApplyCanvasRGB`)
+		canvas -edit -rgbValue ($rgb.x) ($rgb.y) ($rgb.z) $VCP_ApplyCanvasRGB;
+
+	if (0!= size($VCP_TintCanvasRGB) && `control -exists $VCP_TintCanvasRGB`)
+		canvas -edit -rgbValue ($rgb.x) ($rgb.y) ($rgb.z) $VCP_TintCanvasRGB;
+
+	VCP_ApplyColourCanvasUpdated();
+}
+
+global proc 
+VCP_UpdateAbsRGBASliders()
+{
+	global float $VCP_Apply_RGBA[];
+	global string $VCP_ApplySliders[];
+	global string $VCP_ApplyCanvasRGB, $VCP_ApplyCanvasAlpha;
+
+	float $rgb[] = `canvas -query -rgbValue $VCP_ApplyCanvasRGB`;
+	float $rgba[] = `canvas -query -rgbValue $VCP_ApplyCanvasAlpha`;
+	$VCP_Apply_RGBA[0] = $rgb[0];
+	$VCP_Apply_RGBA[1] = $rgb[1];
+	$VCP_Apply_RGBA[2] = $rgb[2];
+	$VCP_Apply_RGBA[3] = $rgba[0];
+
+	int $normalised = `optionVar -query "RH_VCP_NormalisedColours"`;
+
+	// Update sliders
+	if ($normalised)
+	{
+		floatSliderGrp -edit -value $VCP_Apply_RGBA[0] $VCP_ApplySliders[0];
+		floatSliderGrp -edit -value $VCP_Apply_RGBA[1] $VCP_ApplySliders[1];
+		floatSliderGrp -edit -value $VCP_Apply_RGBA[2] $VCP_ApplySliders[2];
+		floatSliderGrp -edit -value $VCP_Apply_RGBA[3] $VCP_ApplySliders[3];
+	}
+	else
+	{
+		floatSliderGrp -edit -value ($VCP_Apply_RGBA[0]*255) $VCP_ApplySliders[0];
+		floatSliderGrp -edit -value ($VCP_Apply_RGBA[1]*255) $VCP_ApplySliders[1];
+		floatSliderGrp -edit -value ($VCP_Apply_RGBA[2]*255) $VCP_ApplySliders[2];
+		floatSliderGrp -edit -value ($VCP_Apply_RGBA[3]*255) $VCP_ApplySliders[3];
+	}
+	/*floatSliderGrp -edit -value (($VCP_Apply_RGBA[0] + $VCP_Apply_RGBA[1])/2) $VCP_ApplySliders[7];
+	floatSliderGrp -edit -value (($VCP_Apply_RGBA[1] + $VCP_Apply_RGBA[2])/2) $VCP_ApplySliders[8];
+	floatSliderGrp -edit -value (($VCP_Apply_RGBA[0] + $VCP_Apply_RGBA[2])/2) $VCP_ApplySliders[9];*/
+	
+	VCP_SetVarFromApplyColourSliderGroup($VCP_ApplySliders[0], "RH_VCP_ApplyColourR");
+	VCP_SetVarFromApplyColourSliderGroup($VCP_ApplySliders[1], "RH_VCP_ApplyColourG");
+	VCP_SetVarFromApplyColourSliderGroup($VCP_ApplySliders[2], "RH_VCP_ApplyColourB");
+	VCP_SetVarFromApplyColourSliderGroup($VCP_ApplySliders[3], "RH_VCP_ApplyColourA");
+}
+
+global proc
+VCP_UpdateAbsHSVSliders()
+{
+	global float $VCP_Apply_HSV[];
+	global string $VCP_ApplySliders[];
+	global string $VCP_ApplyCanvasRGB;
+
+	// Update sliders
+	float $rgb[] = `canvas -query -rgbValue $VCP_ApplyCanvasRGB`;
+	vector $hsv = `rgb_to_hsv <<$rgb[0],$rgb[1],$rgb[2]>>`;
+
+	int $isZero = 0;
+	if ($rgb[0] == 0 && $rgb[1] == 0 && $rgb[2] == 0)
+		$isZero = 1;
+
+	if ($isZero == 0)
+	{
+		$VCP_Apply_HSV[0] = ($hsv.x) * 360.0;
+		$VCP_Apply_HSV[1] = ($hsv.y);
+	}
+	$VCP_Apply_HSV[2] = ($hsv.z);
+
+	floatSliderGrp -edit -value $VCP_Apply_HSV[0] $VCP_ApplySliders[4];
+	floatSliderGrp -edit -value $VCP_Apply_HSV[1] $VCP_ApplySliders[5];
+	floatSliderGrp -edit -value $VCP_Apply_HSV[2] $VCP_ApplySliders[6];
+
+	VCP_SetVarFromApplyColourSliderGroup($VCP_ApplySliders[0], "RH_VCP_ApplyColourR");
+	VCP_SetVarFromApplyColourSliderGroup($VCP_ApplySliders[1], "RH_VCP_ApplyColourG");
+	VCP_SetVarFromApplyColourSliderGroup($VCP_ApplySliders[2], "RH_VCP_ApplyColourB");
+	VCP_SetVarFromApplyColourSliderGroup($VCP_ApplySliders[3], "RH_VCP_ApplyColourA");
+}
+
+global proc
+VCP_SetVarFromApplyColourSliderGroup(string $control, string $varName)
+{
+	float $val = `floatSliderGrp -query -value $control`;
+	int $normalised = `optionVar -query "RH_VCP_NormalisedColours"`;
+	if (!$normalised)
+		$val /= 255.0;
+	optionVar -floatValue $varName $val;
+}
+
+global proc
+VCP_SpawnColorEditor(string $alpha, string $red, string $green, string $blue, string $parent)
+{
+	global float $VCP_Apply_RGBA[];
+	
+	string $cmd;
+	$cmd = "colorEditor -alpha `floatSliderGrp -query -value " + $alpha + "` ";
+	$cmd += "-rgbValue ";
+	$cmd += "`floatSliderGrp -query -value " + $red + "` ";
+	$cmd += "`floatSliderGrp -query -value " + $green + "` ";
+	$cmd += "`floatSliderGrp -query -value " + $blue + "` ";
+	$cmd += " -parent " + $parent;
+	
+	eval($cmd);
+	
+	if (`colorEditor -query -result`)
+	{
+		// update color
+		float $rgb[] = `colorEditor -query -rgbValue`;
+		float $alpha = `colorEditor -query -alpha`;
+		$VCP_Apply_RGBA[0] = $rgb[0];
+		$VCP_Apply_RGBA[1] = $rgb[1];
+		$VCP_Apply_RGBA[2] = $rgb[2];
+		if (!RH_VCP_MayaHasBug_2011_colorEditorMissingAlpha())
+			$VCP_Apply_RGBA[3] = $alpha;
+		VCP_UpdateAbsSliders();
+	}
+}
+
+global proc
+VCP_AdjustAbsSlider(string $sliderName, string $channel)
+{
+	global string $RH_VCP_OldWireDisplay;
+	global int $VCP_AdjustSliderMoving;
+
+	if (`optionVar -q RH_Col_AutoApply`)
+	{
+		if ($VCP_AdjustSliderMoving == 0)
+		{
+			$VCP_AdjustSliderMoving = 1;
+			$RH_VCP_OldWireDisplay = `displayPref -q -wsa`;
+			displayPref -wireframeOnShadedActive "none";
+			undoInfo -swf 0;
+		}
+		if ($VCP_AdjustSliderMoving == 1)
+		{
+			float $amount = `floatSliderGrp -query -value $sliderName`;
+			VCP_AdjustAbsCommand($amount, $channel);
+		}
+	}
+	else
+	{
+		float $amount = `floatSliderGrp -query -value $sliderName`;
+		VCP_AdjustAbsCommand($amount, $channel);
+	}
+}
+
+global proc
+VCP_FinAbsSlider(string $sliderName, string $channel)
+{
+	global string $RH_VCP_OldWireDisplay;
+	global int $VCP_AdjustSliderMoving;
+
+	float $amount = `floatSliderGrp -query -value $sliderName`;
+
+	if (`optionVar -q RH_Col_AutoApply`)
+	{
+		undoInfo -swf 1;
+		VCP_AdjustAbsCommand($amount, $channel);
+		$VCP_AdjustSliderMoving = 0;
+		displayPref -wireframeOnShadedActive $RH_VCP_OldWireDisplay;
+	}
+	else
+	{
+		VCP_AdjustAbsCommand($amount, $channel);
+	}
+}
+
+global proc
+VCP_AdjustAbsCommand(float $amount, string $channel)
+{
+	global float $VCP_Apply_RGBA[];
+	global float $VCP_Apply_HSV[];
+	
+	int $normalised = `optionVar -query "RH_VCP_NormalisedColours"`;
+
+	int $channelID = 7;
+	// Replace component from current slider
+	switch ($channel)
+	{
+		case "red": 
+			if ($normalised)
+				$VCP_Apply_RGBA[0] = $amount;
+			else
+				$VCP_Apply_RGBA[0] = $amount / 255.0;
+			$channelID = 0;
+			VCP_UpdateCanvasfromRGBA;
+			VCP_UpdateAbsHSVSliders;
+			break;
+		case "green": 
+			if ($normalised)
+				$VCP_Apply_RGBA[1] = $amount;
+			else
+				$VCP_Apply_RGBA[1] = $amount / 255.0;
+			$channelID = 1;
+			VCP_UpdateCanvasfromRGBA;
+			VCP_UpdateAbsHSVSliders;
+			break;
+		case "blue":
+			if ($normalised)
+				$VCP_Apply_RGBA[2] = $amount;
+			else
+				$VCP_Apply_RGBA[2] = $amount / 255.0;
+			$channelID = 2;
+			VCP_UpdateCanvasfromRGBA;
+			VCP_UpdateAbsHSVSliders;
+			break;
+		case "alpha":
+			if ($normalised)
+				$VCP_Apply_RGBA[3] = $amount;
+			else
+				$VCP_Apply_RGBA[3] = $amount / 255.0;
+			$channelID = 3;
+			VCP_UpdateCanvasfromRGBA;
+			VCP_UpdateAbsRGBASliders;
+			break;
+		/*case "yellow":
+			float $ratio = 1.0;
+			if ($VCP_Apply_RGBA[0] + $VCP_Apply_RGBA[1] != 0)
+				$ratio = ($amount * 2.0) / ($VCP_Apply_RGBA[0] + $VCP_Apply_RGBA[1]);
+			float $nr = $VCP_Apply_RGBA[0] * $ratio * 1.0;
+			float $nb = $VCP_Apply_RGBA[1] * $ratio * 1.0;
+			float $nrd = ($amount * 2.0) - (clamp(0.0, 1.0, $nr) + clamp(0.0, 1.0, $nb));
+			$nr += $nrd;
+			$nb += $nrd;
+			$nr = clamp(0.0, 1.0, $nr);
+			$nb = clamp(0.0, 1.0, $nb);
+			$VCP_Apply_RGBA[0] = $nr;
+			$VCP_Apply_RGBA[1] = $nb;
+			$VCP_Apply_RGBA[7] = $amount;
+			VCP_UpdateCanvasfromRGBA;
+			VCP_UpdateAbsHSVSliders;
+			break;
+		case "cyan":
+			float $ratio = 1.0;
+			if ($VCP_Apply_RGBA[1] + $VCP_Apply_RGBA[2] != 0)
+				$ratio = ($amount * 2.0) / ($VCP_Apply_RGBA[1] + $VCP_Apply_RGBA[2]);
+			float $nr = $VCP_Apply_RGBA[1] * $ratio * 1.0;
+			float $nb = $VCP_Apply_RGBA[2] * $ratio * 1.0;
+			float $nrd = ($amount * 2.0) - (clamp(0.0, 1.0, $nr) + clamp(0.0, 1.0, $nb));
+			$nr += $nrd;
+			$nb += $nrd;
+			$nr = clamp(0.0, 1.0, $nr);
+			$nb = clamp(0.0, 1.0, $nb);
+			$VCP_Apply_RGBA[1] = $nr;
+			$VCP_Apply_RGBA[2] = $nb;
+			$VCP_Apply_RGBA[8] = $amount;
+			VCP_UpdateCanvasfromRGBA;
+			VCP_UpdateAbsHSVSliders;
+			break;
+		case "purple":
+			float $ratio = 1.0;
+			if ($VCP_Apply_RGBA[0] + $VCP_Apply_RGBA[2] != 0)
+				$ratio = ($amount * 2.0) / ($VCP_Apply_RGBA[0] + $VCP_Apply_RGBA[2]);
+			float $nr = $VCP_Apply_RGBA[0] * $ratio * 1.0;
+			float $nb = $VCP_Apply_RGBA[2] * $ratio * 1.0;
+			float $nrd = ($amount * 2.0) - (clamp(0.0, 1.0, $nr) + clamp(0.0, 1.0, $nb));
+			$nr += $nrd;
+			$nb += $nrd;
+			$nr = clamp(0.0, 1.0, $nr);
+			$nb = clamp(0.0, 1.0, $nb);
+			$VCP_Apply_RGBA[0] = $nr;
+			$VCP_Apply_RGBA[2] = $nb;
+			$VCP_Apply_RGBA[9] = $amount;
+			VCP_UpdateCanvasfromRGBA;
+			VCP_UpdateAbsHSVSliders;
+			break;*/
+		case "hue": 
+			$VCP_Apply_HSV[0] = $amount;
+			$channelID = 4;
+			VCP_UpdateCanvasfromHSV;
+			VCP_UpdateAbsRGBASliders;
+			break;
+		case "saturation": 
+			$VCP_Apply_HSV[1] = $amount;
+			$channelID = 5;
+			VCP_UpdateCanvasfromHSV;
+			VCP_UpdateAbsRGBASliders;
+			break;
+		case "value": 
+			$VCP_Apply_HSV[2] = $amount;
+			$channelID = 6;
+			VCP_UpdateCanvasfromHSV;
+			VCP_UpdateAbsRGBASliders;
+			break;
+	}
+
+	if (!`optionVar -q RH_Col_AutoApplyChannel`)
+	{
+		$channelID = 7;
+	}
+
+	if (`optionVar -q RH_Col_AutoApply`)
+	{
+		VCP_ApplyColourApply($channelID);
+	}
+}
+
+global proc
+VCP_PickColour()
+{
+	global float $VCP_Apply_RGBA[];
+	float $color[] = `grabColor -rgbValue`;
+	
+	$VCP_Apply_RGBA[0] = $color[0];
+	$VCP_Apply_RGBA[1] = $color[1];
+	$VCP_Apply_RGBA[2] = $color[2];
+	
+	VCP_UpdateAbsSliders();
+}
+
+global proc 
+VCP_PickColourFromSelection()
+{
+	global float $VCP_Apply_RGBA[];
+
+	if (size(`ls -selection`) > 0)
+	{
+		float $avgRGBA[] = `eval("RH_VertexPolyColour -op 100 -averageRGBA")`;
+		$VCP_Apply_RGBA[0] = $avgRGBA[0];
+		$VCP_Apply_RGBA[1] = $avgRGBA[1];
+		$VCP_Apply_RGBA[2] = $avgRGBA[2];
+		$VCP_Apply_RGBA[3] = $avgRGBA[3];
+
+		VCP_UpdateAbsSliders();
+	}
+}

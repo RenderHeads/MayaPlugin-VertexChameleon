@@ -1,0 +1,362 @@
+//
+// Vertex Chameleon Maya Plugin Source Code
+// Copyright (C) 2007-2014 RenderHeads Ltd.
+//
+// This source is available for distribution and/or modification
+// only under the terms of the MIT license.  All rights reserved.
+//
+// The source is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// FITNESS FOR A PARTICULAR PURPOSE. See the MIT license
+// for more details.
+//
+
+global proc
+VCP_ApplyChannelSwapCommand(int $op)
+{
+	string $src = `optionVar -q RH_VCP_ChannelCopySrc`;
+	string $dst = `optionVar -q RH_VCP_ChannelCopyDst`;
+	if ($src == $dst)
+		return;
+
+	string $cmd = "RH_VertexPolyColour -op " + $op;
+	$cmd += " -channelSrc " + $src;
+	$cmd += " -channelDst " + $dst;
+
+	if (`optionVar -query RH_VCP_NoUndo`)
+		$cmd += " -nun ";
+
+	int $forceComponent = `optionVar -query RH_VCP_ComponentOverride`;
+	if ($forceComponent > 1)
+	{
+		if ($forceComponent == 2)
+			$cmd += " -forceComponent 1 ";
+		if ($forceComponent == 3)
+			$cmd += " -forceComponent 2 ";
+	}
+	$cmd += " -channelMask " + `optionVar -q RH_VCP_ChannelMask` + " ";
+
+	eval($cmd);
+}
+
+global proc
+VCP_ChannelCopy_ApplyCopyColourSetsCommand(string $set1, string $set2)
+{
+	// Store set
+	{
+		string $cmd = "RH_VertexPolyColour -op 3 ";
+
+		if (`optionVar -query RH_VCP_NoUndo`)
+			$cmd += " -nun ";
+
+		int $forceComponent = `optionVar -query RH_VCP_ComponentOverride`;
+		$cmd += " -forceReadColourSet " + $set2;
+		if ($forceComponent > 1)
+		{
+			if ($forceComponent == 2)
+				$cmd += " -forceComponent 1 ";
+			if ($forceComponent == 3)
+				$cmd += " -forceComponent 2 ";
+		}
+		eval($cmd);
+	}
+
+	string $src = `optionVar -q RH_VCP_ChannelCopySrc`;
+	string $dst = `optionVar -q RH_VCP_ChannelCopyDst`;
+
+	string $cmd = "RH_VertexPolyColour -op 403 ";
+	$cmd += " -channelSrc " + $src;
+	$cmd += " -channelDst " + $dst;
+	$cmd += " -nodeDest ";
+	$cmd += " -forceReadColourSet " + $set1;
+	$cmd += " -forceWriteColourSet " + $set2;
+
+	int $forceComponent = `optionVar -query RH_VCP_ComponentOverride`;
+	if ($forceComponent > 1)
+	{
+		if ($forceComponent == 2)
+			$cmd += " -forceComponent 1 ";
+		if ($forceComponent == 3)
+			$cmd += " -forceComponent 2 ";
+	}
+	if (`optionVar -query RH_VCP_NoUndo`)
+		$cmd += " -nun ";
+
+	$cmd += " -channelMask " + `optionVar -q RH_VCP_ChannelMask` + " ";
+
+	eval($cmd);
+
+	VCP_RemoveColourStoreForSelection();
+}
+
+
+global proc
+VCP_ChannelCopy_ApplySwapColourSetsCommand(string $set1, string $set2)
+{
+	// Store set1 in src
+	{
+		string $cmd = "RH_VertexPolyColour -op 1 ";
+		if (`optionVar -query RH_VCP_NoUndo`)
+			$cmd += " -nun ";
+
+		int $forceComponent = `optionVar -query RH_VCP_ComponentOverride`;
+		$cmd += " -forceReadColourSet " + $set1;
+		if ($forceComponent > 1)
+		{
+			if ($forceComponent == 2)
+				$cmd += " -forceComponent 1 ";
+			if ($forceComponent == 3)
+				$cmd += " -forceComponent 2 ";
+		}
+		eval($cmd);
+	}
+	// Store set2 in dst
+	{
+		string $cmd = "RH_VertexPolyColour -op 3 ";
+		if (`optionVar -query RH_VCP_NoUndo`)
+			$cmd += " -nun ";
+
+		int $forceComponent = `optionVar -query RH_VCP_ComponentOverride`;
+		$cmd += " -forceReadColourSet " + $set2;
+		if ($forceComponent > 1)
+		{
+			if ($forceComponent == 2)
+				$cmd += " -forceComponent 1 ";
+			if ($forceComponent == 3)
+				$cmd += " -forceComponent 2 ";
+		}
+		eval($cmd);
+	}
+
+	string $src = `optionVar -q RH_VCP_ChannelCopySrc`;
+	string $dst = `optionVar -q RH_VCP_ChannelCopyDst`;
+
+	// Copy src into dst
+	{
+		string $cmd = "RH_VertexPolyColour -op 403 ";
+		$cmd += " -channelSrc " + $src;
+		$cmd += " -channelDst " + $dst;
+		$cmd += " -nodeDest ";
+		$cmd += " -forceReadColourSet " + $set1;
+		$cmd += " -forceWriteColourSet " + $set2;
+		if (`optionVar -query RH_VCP_NoUndo`)
+			$cmd += " -nun ";
+
+		int $forceComponent = `optionVar -query RH_VCP_ComponentOverride`;
+		if ($forceComponent > 1)
+		{
+			if ($forceComponent == 2)
+				$cmd += " -forceComponent 1 ";
+			if ($forceComponent == 3)
+				$cmd += " -forceComponent 2 ";
+		}
+		$cmd += " -channelMask " + `optionVar -q RH_VCP_ChannelMask` + " ";
+
+		eval($cmd);
+	}
+
+	// Copy dst into src
+	{
+		string $cmd = "RH_VertexPolyColour -op 403 ";
+		$cmd += " -channelSrc " + $dst;
+		$cmd += " -channelDst " + $src;
+		$cmd += " -nodeDestSource ";				// use the "source" node as the destinateion to write to
+		$cmd += " -nodeSource2 ";					// use the "dest" node as the source to read from
+		//$cmd += " -forceReadColourSet " + $set2;
+		$cmd += " -forceWriteColourSet " + $set1;
+
+		if (`optionVar -query RH_VCP_NoUndo`)
+			$cmd += " -nun ";
+
+		int $forceComponent = `optionVar -query RH_VCP_ComponentOverride`;
+		if ($forceComponent > 1)
+		{
+			if ($forceComponent == 2)
+				$cmd += " -forceComponent 1 ";
+			if ($forceComponent == 3)
+				$cmd += " -forceComponent 2 ";
+		}
+		$cmd += " -channelMask " + `optionVar -q RH_VCP_ChannelMask` + " ";
+
+		eval($cmd);
+	}
+
+	VCP_RemoveColourStoreForSelection();
+}
+
+global proc
+VCP_ChannelSwap_Apply(int $op, string $list1, string $list2)
+{
+	if (`optionVar -query RH_VCP_ChannelCopyBetweenSets`)
+	{
+		string $set1[] = `textScrollList -q -selectItem $list1`;
+		string $set2[] = `textScrollList -q -selectItem $list2`;
+
+		if (size($set1) > 0 && size($set2) > 0)
+		{
+			if ($op == 403)
+				VCP_ChannelCopy_ApplyCopyColourSetsCommand($set1[0], $set2[0]);
+			else
+				VCP_ChannelCopy_ApplySwapColourSetsCommand($set1[0], $set2[0]);
+		}
+		else
+		{
+			VCP_ApplyChannelSwapCommand($op);
+		}
+	}
+	else
+	{
+		VCP_ApplyChannelSwapCommand($op);
+	}
+}
+
+global proc
+VCP_ChannelSwap_UpdateColourSetListFromSelection(string $list1, string $list2)
+{
+	textScrollList -e -removeAll $list1;
+	textScrollList -e -removeAll $list2;
+
+	string $sets[] = `polyColorSet -q -allColorSets`;
+	for ($set in $sets)
+	{
+		textScrollList -e -append $set $list1;
+		textScrollList -e -append $set $list2;
+	}
+
+	textScrollList -q -selectItem $list1;
+	textScrollList -q -selectItem $list2;
+}
+
+proc
+VCP_CreateFrame_ChannelSwapper_Content()
+{
+	columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 0;
+
+		//rowLayout -nc 2 -adjustableColumn 1 -columnWidth2 150 150;
+			string $OM_SrcChannel = `optionMenuGrp -cw2 50 100 -adjustableColumn 2 -columnAlign 1 "right" -label (VCP_uiRes("m_RH_VCP.kChanSwap_Source"))`;
+				menuItem -label (VCP_uiRes("m_RH_VCP.kChanSwap_Red")) -ann "Red";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kChanSwap_Green")) -ann "Green";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kChanSwap_Blue")) -ann "Blue";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kChanSwap_Hue")) -ann "Hue";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kChanSwap_Saturation")) -ann "Saturation";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kChanSwap_Value")) -ann "Value";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kChanSwap_Alpha")) -ann "Alpha";
+			//text -label "to" -w 20;
+			string $OM_DstChannel = `optionMenuGrp -cw2 50 100 -adjustableColumn 2 -columnAlign 1 "right" -label (VCP_uiRes("m_RH_VCP.kChanSwap_Target"))`;
+				menuItem -label (VCP_uiRes("m_RH_VCP.kChanSwap_Red")) -ann "Red";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kChanSwap_Green")) -ann "Green";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kChanSwap_Blue")) -ann "Blue";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kChanSwap_Hue")) -ann "Hue";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kChanSwap_Saturation")) -ann "Saturation";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kChanSwap_Value")) -ann "Value";
+				menuItem -label (VCP_uiRes("m_RH_VCP.kChanSwap_Alpha")) -ann "Alpha";
+		//setParent ..;
+
+		$CB_colorSets=`checkBox -label (VCP_uiRes("m_RH_VCP.kChanSwap_BetweenColourSets")) -align "left"`;
+
+		int $frameCollapse = `optionVar -query "RH_VCP_FrameChannelSwapColourSet"`;
+		$frame = `frameLayout -label (VCP_uiRes("m_RH_VCP.kChanSwap_BetweenColourSetsFrameTitle"))
+					-labelIndent 4
+					-borderStyle "etchedIn"
+					-collapsable true
+					-collapse $frameCollapse
+					-marginWidth 4
+					-marginHeight 4`;
+
+			columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 0;
+
+				rowLayout -adjustableColumn 2 -numberOfColumns 2 -columnWidth2 130 130
+					-columnAlign2 "left" "left"
+					-columnAttach 1 "both" 0 
+					-columnAttach 2 "both" 0;
+
+					columnLayout -adjustableColumn true;
+						text -label (VCP_uiRes("m_RH_VCP.kChanSwap_Source"));
+						$TL_sourceSet=`textScrollList -numberOfRows 4 -allowMultiSelection false -width 130`;
+					setParent ..;
+
+					columnLayout -adjustableColumn true;
+						text -label (VCP_uiRes("m_RH_VCP.kChanSwap_Target"));
+						$TL_targetSet=`textScrollList -numberOfRows 4 -allowMultiSelection false -width 130`;
+					setParent ..;
+				setParent ..;
+
+				$BN_update=`button -label (VCP_uiRes("m_RH_VCP.kChanSwap_UpdateFromSelection"))`;
+			setParent ..;
+		setParent ..;
+
+		$BN_applyCopy=`button -h 30 -label (VCP_uiRes("m_RH_VCP.kChanSwap_Copy"))`;
+		$BN_applySwap=`button -h 30 -label (VCP_uiRes("m_RH_VCP.kChanSwap_Swap"))`;
+
+	setParent ..;
+
+	// commands
+	{
+		frameLayout	-e -collapseCommand "optionVar -intValue RH_VCP_FrameChannelSwapColourSet 1" $frame;
+		frameLayout	-e -expandCommand "optionVar -intValue RH_VCP_FrameChannelSwapColourSet 0" $frame;
+
+		optionMenuGrp -edit -changeCommand ("VCP_SetVarFromOptionMenuGrp_ByAnnotation " + $OM_SrcChannel + " RH_VCP_ChannelCopySrc") $OM_SrcChannel;
+		optionMenuGrp -edit -changeCommand ("VCP_SetVarFromOptionMenuGrp_ByAnnotation " + $OM_DstChannel + " RH_VCP_ChannelCopyDst") $OM_DstChannel;
+
+		string $cmd = "VCP_ChannelSwap_Apply 403 " + $TL_sourceSet + " " + $TL_targetSet;
+		button -e -command $cmd $BN_applyCopy;
+
+		$cmd = "VCP_ChannelSwap_Apply 404 " + $TL_sourceSet + " " + $TL_targetSet;
+		button -e -command $cmd $BN_applySwap;
+
+		string $updateCmd = ("VCP_ChannelSwap_UpdateColourSetListFromSelection " + $TL_sourceSet + " " + $TL_targetSet + ";");
+		button -e -command $updateCmd $BN_update;
+
+		$cmd = "VCP_SetVarFromCheckbox " + $CB_colorSets + " RH_VCP_ChannelCopyBetweenSets;";
+		$cmd += "frameLayout -e -enable true -collapse false " + $frame + ";";
+		$cmd += $updateCmd;
+		checkBox -e -onCommand $cmd $CB_colorSets;
+
+		$cmd = "VCP_SetVarFromCheckbox " + $CB_colorSets + " RH_VCP_ChannelCopyBetweenSets;";
+		$cmd += "frameLayout -e -enable false -collapse true " + $frame;
+		checkBox -e -offCommand $cmd $CB_colorSets;
+	}
+
+	// Settings
+	{
+		RH_SetOptionMenuGrpValue_ByAnnotation($OM_SrcChannel, `optionVar -query RH_VCP_ChannelCopySrc`);
+		RH_SetOptionMenuGrpValue_ByAnnotation($OM_DstChannel, `optionVar -query RH_VCP_ChannelCopyDst`);
+
+		if (`optionVar -query RH_VCP_ChannelCopyBetweenSets`)
+			frameLayout -e -enable true -collapse false $frame;
+		else
+			frameLayout -e -enable false -collapse true $frame;
+	}
+}
+
+global proc
+VCP_CreateFrame_ChannelSwapper(int $hasFrame)
+{
+	if ($hasFrame)
+	{
+		int $frameCollapse = `optionVar -query "RH_VCP_FrameChannelSwap"`;
+		$frame = `frameLayout -label (VCP_uiRes("m_RH_VCP.kChanSwap_FrameTitle"))
+					-labelIndent 4
+					-borderStyle "etchedIn"
+					-collapsable true
+					-collapse $frameCollapse
+					-marginWidth 4
+					-marginHeight 4`;
+			VCP_CreateFrame_ChannelSwapper_Content();
+		setParent ..;
+
+		frameLayout	-e -collapseCommand "optionVar -intValue RH_VCP_FrameChannelSwap 1" $frame;
+		frameLayout	-e -expandCommand "optionVar -intValue RH_VCP_FrameChannelSwap 0" $frame;
+	}
+	else
+	{
+		$frame = `frameLayout
+					-labelVisible false
+					-borderStyle "etchedIn"
+					-collapsable false
+					-marginWidth 4
+					-marginHeight 4`;
+			VCP_CreateFrame_ChannelSwapper_Content();
+		setParent ..;
+	}
+}

@@ -1,0 +1,247 @@
+//
+// Vertex Chameleon Maya Plugin Source Code
+// Copyright (C) 2007-2014 RenderHeads Ltd.
+//
+// This source is available for distribution and/or modification
+// only under the terms of the MIT license.  All rights reserved.
+//
+// The source is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// FITNESS FOR A PARTICULAR PURPOSE. See the MIT license
+// for more details.
+//
+
+proc 
+VCP_CreateNudgeColourChannelSlot(string $name, string $op1, string $op2, string $varName, vector $hsvCol1, vector $hsvCol2)
+{
+	rowLayout -numberOfColumns 3 -columnWidth3 40 60 60 -columnAlign 1 "left" -columnAlign 2 "center" -columnAlign 3 "center";
+		$slider=`floatField -pre 0 -v 5 -min 0 -max 100 -w 35`;
+		string $button_inc;
+		string $button_dec;
+		if (($hsvCol1.x) >= 0.0)
+		{
+			vector $rgb1 = `hsv_to_rgb $hsvCol1`;
+			vector $rgb2 = `hsv_to_rgb $hsvCol2`;
+			$button_inc=`button -w 60 -h 25 -align "center" -label $op1 -backgroundColor ($rgb1.x) ($rgb1.y) ($rgb1.z)`;
+			$button_dec=`button -w 60 -h 25 -align "center" -label $op2 -backgroundColor ($rgb2.x) ($rgb2.y) ($rgb2.z)`;
+		}
+		else
+		{
+			$button_inc=`button -w 60 -h 25 -align "center" -label $op1`;
+			$button_dec=`button -w 60 -h 25 -align "center" -label $op2`;
+		}
+		//$slider=`floatSlider -min 0 -max 0.5 -value 0.02`;// -backgroundColor $colR $colG $colB`;
+		//text -align "left" -w 60 -label $name;// -backgroundColor $colR $colG $colB;
+	setParent..;
+
+	floatField -edit -value (`optionVar -q $varName`) $slider;
+
+	$cmd = ("VCP_DoNudge \"" + $op1 + "\" " + $varName);
+	button -edit -command $cmd $button_inc;
+
+	$cmd = ("VCP_DoNudge \"" + $op2 + "\" " + $varName);
+	button -edit -command $cmd $button_dec;
+	floatField -edit -changeCommand ("VCP_SetVarFromFloatField " + $slider + " " + $varName) $slider;
+}
+
+proc 
+VCP_CreateNudgeChannelSlot(string $name, string $op1, string $op2, string $varName)
+{
+	VCP_CreateNudgeColourChannelSlot($name, $op1, $op2, $varName, <<-1.0, -1.0, -1.0>>, <<-1.0, -1.0, -1.0>>);
+}
+
+global proc
+VCP_DoNudgeCommand(string $operation, float $amount)
+{
+	string $cmd = "RH_VertexPolyColour ";
+
+	if (`optionVar -query RH_VCP_Verbose` > 0)
+	{
+		$cmd += " -verbose ";
+	}
+	if (`optionVar -query RH_VCP_NoUndo`)
+		$cmd += " -nun ";
+
+	int $forceComponent = `optionVar -query RH_VCP_ComponentOverride`;
+	if ($forceComponent > 1)
+	{
+		if ($forceComponent == 2)
+			$cmd += " -forceComponent 1 ";
+		if ($forceComponent == 3)
+			$cmd += " -forceComponent 2 ";
+	}
+
+	switch ($operation)
+	{
+	case "+ Red":
+		$cmd += " -op 300 -colorR " + $amount;
+		break;
+	case "- Red":
+		$cmd += " -op 300 -colorR -" + $amount;
+		break;
+	case "+ Yellow":
+		$cmd += " -op 300 -colorR " + $amount + " -colorG " + $amount;
+		break;
+	case "- Yellow":
+		$cmd += " -op 300 -colorR -" + $amount + " -colorG -" + $amount;
+		break;
+	case "+ Green":
+		$cmd += " -op 300 -colorG " + $amount;
+		break;
+	case "- Green":
+		$cmd += " -op 300 -colorG -" + $amount;
+		break;
+	case "+ Cyan":
+		$cmd += " -op 300 -colorG " + $amount + " -colorB " + $amount;
+		break;
+	case "- Cyan":
+		$cmd += " -op 300 -colorG -" + $amount + " -colorB -" + $amount;
+		break;
+	case "+ Blue":
+		$cmd += " -op 300 -colorB " + $amount;
+		break;
+	case "- Blue":
+		$cmd += " -op 300 -colorB -" + $amount;
+		break;
+	case "+ Purple":
+		$cmd += " -op 300 -colorR " + $amount + " -colorB " + $amount;
+		break;
+	case "- Purple":
+		$cmd += " -op 300 -colorR -" + $amount + " -colorB -" + $amount;
+		break;
+	case "+ White":
+		$cmd += " -op 300 -colorR " + $amount + " -colorG " + $amount + " -colorB " + $amount;
+		break;
+	case "+ Black":
+		$cmd += " -op 300 -colorR -" + $amount + " -colorG -" + $amount + " -colorB -" + $amount;
+		break;
+	case "+ Alpha":
+		$cmd += " -op 300 -colorA " + $amount;
+		break;
+	case "- Alpha":
+		$cmd += " -op 300 -colorA -" + $amount;
+		break;
+	case "+ Hue":
+		$cmd += " -op 301 -colorH " + $amount * 180.0;
+		break;
+	case "- Hue":
+		$cmd += " -op 301 -colorH -" + $amount * 180.0;
+		break;
+	case "+ Sat":
+		$cmd += " -op 301 -colorS " + $amount;
+		break;
+	case "- Sat":
+		$cmd += " -op 301 -colorS -" + $amount;
+		break;
+	case "+ Value":
+		$cmd += " -op 301 -colorV " + $amount;
+		break;
+	case "- Value":
+		$cmd += " -op 301 -colorV -" + $amount;
+		break;
+	case "+ Bright":
+		$cmd += " -op 305 -brightness " + $amount;
+		break;
+	case "- Bright":
+		$cmd += " -op 305 -brightness -" + $amount;
+		break;
+	case "+ Contrast":
+		$cmd += " -op 305 -contrast " + $amount;
+		break;
+	case "- Contrast":
+		$cmd += " -op 305 -contrast -" + $amount;
+		break;
+	case "Blur":
+		$cmd += " -op 200 -masterBlend " + $amount;
+		break;
+	case "Sharpen":
+		$cmd += " -op 201 -masterBlend " + $amount;
+		break;
+	case "Erode":
+		$cmd += " -op 202 -masterBlend " + $amount;
+		break;
+	case "Dilate":
+		$cmd += " -op 203 -masterBlend " + $amount;
+		break;
+	}
+	$cmd += " -channelMask " + `optionVar -q RH_VCP_ChannelMask` + " ";
+
+	eval($cmd);
+}
+
+
+global proc
+VCP_DoNudge(string $operation, string $varName)
+{
+	float $amount = `optionVar -query $varName` * 0.01;
+
+	VCP_DoNudgeCommand($operation, $amount);
+}
+
+proc
+VCP_CreateFrame_ChannelNudger_Content()
+{
+	columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 0;
+
+		VCP_CreateNudgeColourChannelSlot((VCP_uiRes("m_RH_VCP.kNudge_Red")), (VCP_uiRes("m_RH_VCP.kNudge_RedA")), (VCP_uiRes("m_RH_VCP.kNudge_RedR")), "RH_VCP_NudgeR", <<0.0,1.0,1.0>>, <<0.0,1.0,0.65>>);
+		VCP_CreateNudgeColourChannelSlot((VCP_uiRes("m_RH_VCP.kNudge_Yellow")), (VCP_uiRes("m_RH_VCP.kNudge_YellowA")), (VCP_uiRes("m_RH_VCP.kNudge_YellowR")), "RH_VCP_NudgeYellow", <<0.166,1.0,1.0>>, <<0.166,1.0,0.65>>);
+		VCP_CreateNudgeColourChannelSlot((VCP_uiRes("m_RH_VCP.kNudge_Green")), (VCP_uiRes("m_RH_VCP.kNudge_GreenA")), (VCP_uiRes("m_RH_VCP.kNudge_GreenR")), "RH_VCP_NudgeG", <<0.333,1.0,1.0>>, <<0.333,1.0,0.65>>);
+		VCP_CreateNudgeColourChannelSlot((VCP_uiRes("m_RH_VCP.kNudge_Cyan")), (VCP_uiRes("m_RH_VCP.kNudge_CyanA")), (VCP_uiRes("m_RH_VCP.kNudge_CyanR")), "RH_VCP_NudgeCyan", <<0.5,1.0,1.0>>, <<0.5,1.0,0.65>>);
+		VCP_CreateNudgeColourChannelSlot((VCP_uiRes("m_RH_VCP.kNudge_Blue")), (VCP_uiRes("m_RH_VCP.kNudge_BlueA")), (VCP_uiRes("m_RH_VCP.kNudge_BlueR")), "RH_VCP_NudgeB", <<0.666,1.0,1.0>>, <<0.666,1.0,0.65>>);
+		VCP_CreateNudgeColourChannelSlot((VCP_uiRes("m_RH_VCP.kNudge_Purple")), (VCP_uiRes("m_RH_VCP.kNudge_PurpleA")), (VCP_uiRes("m_RH_VCP.kNudge_PurpleR")), "RH_VCP_NudgePurple", <<0.833,1.0,1.0>>, <<0.833,1.0,0.65>>);
+		VCP_CreateNudgeColourChannelSlot((VCP_uiRes("m_RH_VCP.kNudge_White")), (VCP_uiRes("m_RH_VCP.kNudge_WhiteA")), (VCP_uiRes("m_RH_VCP.kNudge_WhiteR")), "RH_VCP_NudgeWhite", <<1.0,0.0,1.0>>, <<1.0,0.0,0.65>>);
+		RH_VCP_BlankSeparator();
+		RH_VCP_BlankSeparator();
+		RH_VCP_BlankSeparator();
+		VCP_CreateNudgeChannelSlot((VCP_uiRes("m_RH_VCP.kNudge_Hue")), (VCP_uiRes("m_RH_VCP.kNudge_HueA")), (VCP_uiRes("m_RH_VCP.kNudge_HueR")), "RH_VCP_NudgeHue");
+		VCP_CreateNudgeChannelSlot((VCP_uiRes("m_RH_VCP.kNudge_Saturation")), (VCP_uiRes("m_RH_VCP.kNudge_SaturationA")), (VCP_uiRes("m_RH_VCP.kNudge_SaturationR")), "RH_VCP_NudgeSat");
+		VCP_CreateNudgeChannelSlot((VCP_uiRes("m_RH_VCP.kNudge_Lightness")), (VCP_uiRes("m_RH_VCP.kNudge_LightnessA")), (VCP_uiRes("m_RH_VCP.kNudge_LightnessR")), "RH_VCP_NudgeVal");
+		VCP_CreateNudgeChannelSlot((VCP_uiRes("m_RH_VCP.kNudge_Contrast")), (VCP_uiRes("m_RH_VCP.kNudge_ContrastA")), (VCP_uiRes("m_RH_VCP.kNudge_ContrastR")), "RH_VCP_NudgeCon");
+		RH_VCP_BlankSeparator();
+		RH_VCP_BlankSeparator();
+		VCP_CreateNudgeColourChannelSlot((VCP_uiRes("m_RH_VCP.kNudge_Alpha")), (VCP_uiRes("m_RH_VCP.kNudge_AlphaA")), (VCP_uiRes("m_RH_VCP.kNudge_AlphaR")), "RH_VCP_NudgeAlpha", <<0.5,0.0,0.75>>, <<0.5,0.0,0.65>>);
+		RH_VCP_BlankSeparator();
+		RH_VCP_BlankSeparator();
+		VCP_CreateNudgeChannelSlot((VCP_uiRes("m_RH_VCP.kNudge_SharpenBlur")), (VCP_uiRes("m_RH_VCP.kNudge_Sharpen")), (VCP_uiRes("m_RH_VCP.kNudge_Blur")), "RH_VCP_NudgeBlur");
+		VCP_CreateNudgeChannelSlot((VCP_uiRes("m_RH_VCP.kNudge_DilateErode")), (VCP_uiRes("m_RH_VCP.kNudge_Dilate")), (VCP_uiRes("m_RH_VCP.kNudge_Erode")), "RH_VCP_NudgeDilate");
+
+	setParent..;
+}
+
+global proc string
+VCP_CreateFrame_ChannelNudger(int $hasFrame)
+{
+	//global string $paintChannelButtons[];
+	//clear $paintChannelButtons;
+
+	string $frame;
+	if ($hasFrame)
+	{
+		int $frameCollapse = `optionVar -query "RH_VCP_FrameAdjustNudge"`;
+		$frame = `frameLayout -label (VCP_uiRes("m_RH_VCP.kNudge_FrameTitle"))
+					-labelIndent 4
+					-borderStyle "etchedIn"
+					-collapsable true
+					-collapse $frameCollapse
+					-marginWidth 4
+					-marginHeight 4`;
+			VCP_CreateFrame_ChannelNudger_Content();
+		setParent..;
+
+		frameLayout	-e -collapseCommand "optionVar -intValue RH_VCP_FrameAdjustNudge 1" $frame;
+		frameLayout	-e -expandCommand "optionVar -intValue RH_VCP_FrameAdjustNudge 0" $frame;
+	}
+	else
+	{
+		$frame = `frameLayout
+					-labelVisible false
+					-borderStyle "etchedIn"
+					-collapsable false
+					-marginWidth 4
+					-marginHeight 4`;
+			VCP_CreateFrame_ChannelNudger_Content();
+		setParent ..;
+	}
+
+	return $frame;
+}

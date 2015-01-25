@@ -1,0 +1,101 @@
+//
+// Vertex Chameleon Maya Plugin Source Code
+// Copyright (C) 2007-2014 RenderHeads Ltd.
+//
+// This source is available for distribution and/or modification
+// only under the terms of the MIT license.  All rights reserved.
+//
+// The source is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// FITNESS FOR A PARTICULAR PURPOSE. See the MIT license
+// for more details.
+//
+
+proc
+VCP_CreateFrame_RGB_Content()
+{
+	columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 0;
+
+		$CB_Rainbow = `checkBox -label (VCP_uiRes("m_RH_VCP.kRGBA_Rainbow")) -align "left"`;
+		$SL_red=`floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kRGBA_Red"))-h 20 -field true -cw3 60 40 50 -cc "" -pre 2 -v 0 -min -1 -max 1 -backgroundColor 1.0 0.0 0.0 -adjustableColumn 3`;
+		$SL_yellow=`floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kRGBA_Yellow")) -h 20 -field true -cw3 60 40 50 -cc "" -pre 2 -v 0 -min -1 -max 1 -backgroundColor 1.0 1.0 0.0 -adjustableColumn 3`;
+		$SL_green=`floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kRGBA_Green")) -h 20 -field true -cw3 60 40 50 -cc "" -pre 2 -v 0 -min -1 -max 1 -backgroundColor 0.0 1.0 0.0 -adjustableColumn 3`;
+		$SL_cyan=`floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kRGBA_Cyan")) -h 20 -field true -cw3 60 40 50 -cc "" -pre 2 -v 0 -min -1 -max 1 -backgroundColor 0.0 1.0 1.0 -adjustableColumn 3`;
+		$SL_blue=`floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kRGBA_Blue")) -h 20 -field true -cw3 60 40 50 -cc "" -pre 2 -v 0 -min -1 -max 1 -backgroundColor 0.0 0.0 1.0 -adjustableColumn 3`;
+		$SL_magenta=`floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kRGBA_Magenta")) -h 20 -field true -cw3 60 40 50 -cc "" -pre 2 -v 0 -min -1 -max 1 -backgroundColor 1.0 0.0 1.0 -adjustableColumn 3`;
+		$SL_alpha=`floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kRGBA_Alpha")) -h 20 -field true -cw3 60 40 50 -cc "" -pre 2 -v 0 -min -1 -max 1 -adjustableColumn 3`;
+
+	setParent ..;
+
+	VCP_SetupSlider($SL_red, "colorR", 300);
+	VCP_SetupSlider($SL_green, "colorG", 300);
+	VCP_SetupSlider($SL_blue, "colorB", 300);
+	VCP_SetupSlider($SL_alpha, "colorA", 300);
+	VCP_SetupSliderDual($SL_yellow, "colorR", "colorG", 300);
+	VCP_SetupSliderDual($SL_cyan, "colorG", "colorB", 300);
+	VCP_SetupSliderDual($SL_magenta, "colorB", "colorR", 300);
+
+	string $rainbowOnCMD = "floatSliderGrp -e -h 20 -m true " + $SL_yellow + ";";
+	$rainbowOnCMD += "floatSliderGrp -e -h 20 -m true " + $SL_cyan + ";";
+	$rainbowOnCMD += "floatSliderGrp -e -h 20 -m true " + $SL_magenta + ";";
+	$rainbowOnCMD += "optionVar -intValue RH_VCP_RGBARainbow 1;";
+	
+	string $rainbowOffCMD = "floatSliderGrp -e -h 1 -m false " + $SL_yellow + ";";
+	$rainbowOffCMD += "floatSliderGrp -e -h 1 -m false " + $SL_cyan + ";";
+	$rainbowOffCMD += "floatSliderGrp -e -h 1 -m false " + $SL_magenta + ";";
+	$rainbowOffCMD += "optionVar -intValue RH_VCP_RGBARainbow 0;";
+		
+	// settings
+	{
+		if (`optionVar -q RH_VCP_RGBARainbow` == 1)
+		{
+			eval($rainbowOnCMD);
+			checkBox -e -v 1 $CB_Rainbow;
+		}
+		else
+		{
+			eval($rainbowOffCMD);
+			checkBox -e -v 0 $CB_Rainbow;
+		}
+	}
+
+	// commands
+	{
+		checkBox -e -onCommand $rainbowOnCMD $CB_Rainbow;
+		checkBox -e -offCommand $rainbowOffCMD $CB_Rainbow;
+	}
+}
+
+global proc
+VCP_CreateFrame_RGB(int $hasFrame)
+{
+	if ($hasFrame)
+	{
+		int $frameCollapse = `optionVar -query "RH_VCP_FrameAdjustRGBA"`;
+		$frame = `frameLayout -label (VCP_uiRes("m_RH_VCP.kRGBA_FrameTitle"))
+					-labelIndent 4
+					-borderStyle "etchedIn"
+					-collapsable true
+					-collapse $frameCollapse
+					-marginWidth 4
+					-marginHeight 4`;
+
+			VCP_CreateFrame_RGB_Content();
+
+		setParent ..;
+		
+		frameLayout	-e -collapseCommand "optionVar -intValue RH_VCP_FrameAdjustRGBA 1" $frame;
+		frameLayout	-e -expandCommand "optionVar -intValue RH_VCP_FrameAdjustRGBA 0" $frame;
+	}
+	else
+	{
+		$frame = `frameLayout
+					-labelVisible false
+					-borderStyle "etchedIn"
+					-collapsable false
+					-marginWidth 4
+					-marginHeight 4`;
+			VCP_CreateFrame_RGB_Content();
+		setParent ..;
+	}
+}

@@ -1,0 +1,193 @@
+//
+// Vertex Chameleon Maya Plugin Source Code
+// Copyright (C) 2007-2014 RenderHeads Ltd.
+//
+// This source is available for distribution and/or modification
+// only under the terms of the MIT license.  All rights reserved.
+//
+// The source is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// FITNESS FOR A PARTICULAR PURPOSE. See the MIT license
+// for more details.
+//
+
+global proc
+VCP_VertexColourInspectorUpdate()
+{
+	// Get colour data from selection
+	int $numUnique[] = `eval("RH_VertexPolyColour -op 100 -uniqueColours")`;
+	if ($numUnique[0] > 0)
+	{
+		float $minmaxavgRGBA[] = `eval("RH_VertexPolyColour -op 100 -minmaxRGBA -averageRGBA")`;
+
+		// Update optionVars
+		optionVar -floatValue RH_VCP_Inspector_MinRGBA $minmaxavgRGBA[0];
+		optionVar -floatValueAppend RH_VCP_Inspector_MinRGBA $minmaxavgRGBA[1];
+		optionVar -floatValueAppend RH_VCP_Inspector_MinRGBA $minmaxavgRGBA[2];
+		optionVar -floatValueAppend RH_VCP_Inspector_MinRGBA $minmaxavgRGBA[3];
+
+		optionVar -floatValue RH_VCP_Inspector_MaxRGBA $minmaxavgRGBA[4];
+		optionVar -floatValueAppend RH_VCP_Inspector_MaxRGBA $minmaxavgRGBA[5];
+		optionVar -floatValueAppend RH_VCP_Inspector_MaxRGBA $minmaxavgRGBA[6];
+		optionVar -floatValueAppend RH_VCP_Inspector_MaxRGBA $minmaxavgRGBA[7];
+
+		optionVar -floatValue RH_VCP_Inspector_AvgRGBA $minmaxavgRGBA[8];
+		optionVar -floatValueAppend RH_VCP_Inspector_AvgRGBA $minmaxavgRGBA[9];
+		optionVar -floatValueAppend RH_VCP_Inspector_AvgRGBA $minmaxavgRGBA[10];
+		optionVar -floatValueAppend RH_VCP_Inspector_AvgRGBA $minmaxavgRGBA[11];
+
+		optionVar -intValue RH_VCP_Inspector_UniqueColours $numUnique[0];
+
+		VCP_VertexColourInspectorUpdateUI();
+	}
+}
+
+global proc
+VCP_VertexColourInspectorUpdateUI()
+{
+	// Update UI
+	float $minRGBA[] = `optionVar -query "RH_VCP_Inspector_MinRGBA"`;
+	canvas -edit -rgbValue $minRGBA[0] $minRGBA[1] $minRGBA[2] RH_VCP_Inspector_Canvas_MinRGB;
+	canvas -edit -rgbValue $minRGBA[3] $minRGBA[3] $minRGBA[3] RH_VCP_Inspector_Canvas_MinAlpha;
+
+	float $maxRGBA[] = `optionVar -query "RH_VCP_Inspector_MaxRGBA"`;
+	canvas -edit -rgbValue $maxRGBA[0] $maxRGBA[1] $maxRGBA[2] RH_VCP_Inspector_Canvas_MaxRGB;
+	canvas -edit -rgbValue $maxRGBA[3] $maxRGBA[3] $maxRGBA[3] RH_VCP_Inspector_Canvas_MaxAlpha;
+
+	float $avgRGBA[] = `optionVar -query "RH_VCP_Inspector_AvgRGBA"`;
+	canvas -edit -rgbValue $avgRGBA[0] $avgRGBA[1] $avgRGBA[2] RH_VCP_Inspector_Canvas_AvgRGB;
+	canvas -edit -rgbValue $avgRGBA[3] $avgRGBA[3] $avgRGBA[3] RH_VCP_Inspector_Canvas_AvgAlpha;
+
+	int $numUnique = `optionVar -query "RH_VCP_Inspector_UniqueColours"`;
+
+	floatField -edit -value $minRGBA[0] RH_VCP_Inspector_FF_MinR;
+	floatField -edit -value $minRGBA[1] RH_VCP_Inspector_FF_MinG;
+	floatField -edit -value $minRGBA[2] RH_VCP_Inspector_FF_MinB;
+	floatField -edit -value $minRGBA[3] RH_VCP_Inspector_FF_MinA;
+
+	floatField -edit -value $maxRGBA[0] RH_VCP_Inspector_FF_MaxR;
+	floatField -edit -value $maxRGBA[1] RH_VCP_Inspector_FF_MaxG;
+	floatField -edit -value $maxRGBA[2] RH_VCP_Inspector_FF_MaxB;
+	floatField -edit -value $maxRGBA[3] RH_VCP_Inspector_FF_MaxA;
+
+	floatField -edit -value $avgRGBA[0] RH_VCP_Inspector_FF_AvgR;
+	floatField -edit -value $avgRGBA[1] RH_VCP_Inspector_FF_AvgG;
+	floatField -edit -value $avgRGBA[2] RH_VCP_Inspector_FF_AvgB;
+	floatField -edit -value $avgRGBA[3] RH_VCP_Inspector_FF_AvgA;
+
+	vector $minHSV = `rgb_to_hsv <<$minRGBA[0],$minRGBA[1],$minRGBA[2]>>`;
+	vector $maxHSV = `rgb_to_hsv <<$maxRGBA[0],$maxRGBA[1],$maxRGBA[2]>>`;
+	vector $avgHSV = `rgb_to_hsv <<$avgRGBA[0],$avgRGBA[1],$avgRGBA[2]>>`;
+
+	floatField -edit -value ($minHSV.x*360) RH_VCP_Inspector_FF_MinH;
+	floatField -edit -value ($minHSV.y) RH_VCP_Inspector_FF_MinS;
+	floatField -edit -value ($minHSV.z) RH_VCP_Inspector_FF_MinV;
+	floatField -edit -value ($maxHSV.x*360) RH_VCP_Inspector_FF_MaxH;
+	floatField -edit -value ($maxHSV.y) RH_VCP_Inspector_FF_MaxS;
+	floatField -edit -value ($maxHSV.z) RH_VCP_Inspector_FF_MaxV;
+	floatField -edit -value ($avgHSV.x*360) RH_VCP_Inspector_FF_AvgH;
+	floatField -edit -value ($avgHSV.y) RH_VCP_Inspector_FF_AvgS;
+	floatField -edit -value ($avgHSV.z) RH_VCP_Inspector_FF_AvgV;
+
+	text -edit -label ($numUnique + " Unique Colours") RH_VCP_Inspector_Label_NumUnique;
+}
+
+global proc
+VCP_VertexColourInspector()
+{
+	string $VTwin2 = "RH_VCP_VertexColourInspector";
+
+	if (`window -ex $VTwin2`) 
+   	{
+		deleteUI -window  $VTwin2;
+      	return;
+	}
+	
+	window -wh 165 325 -t (VCP_uiRes("m_RH_VCP.kColInspector_WindowName")) -mnb 0 -mxb 0 -s 0 -tlb 1 -rtf 1 $VTwin2;
+
+	string $form = `formLayout -numberOfDivisions 100 -width 165 -height 325 MainFormLayout`;
+	
+	columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 4;
+
+		rowLayout -numberOfColumns 4 -w 165 -cw4 15 50 50 50 -adjustableColumn 4 -cl4 "left" "center" "center" "center";
+			columnLayout -columnAlign "left" -adjustableColumn true -rowSpacing 0 -cw 15;
+				text -label "" -w 15;
+				text -label "" -w 15 -height 25;
+				text -label "" -w 15;
+				text -label (VCP_uiRes("m_RH_VCP.kColInspector_R")) -w 15 -h 22;
+				text -label (VCP_uiRes("m_RH_VCP.kColInspector_G")) -w 15 -h 22;
+				text -label (VCP_uiRes("m_RH_VCP.kColInspector_B")) -w 15 -h 22;
+				text -label (VCP_uiRes("m_RH_VCP.kColInspector_A")) -w 15 -h 22;
+				text -label "" -w 15;
+				text -label (VCP_uiRes("m_RH_VCP.kColInspector_H")) -w 15 -h 22;
+				text -label (VCP_uiRes("m_RH_VCP.kColInspector_S")) -w 15 -h 22;
+				text -label (VCP_uiRes("m_RH_VCP.kColInspector_V")) -w 15 -h 22;
+			setParent..;
+			columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 0 -cw 40;
+				text -label (VCP_uiRes("m_RH_VCP.kColInspector_Min"));
+				canvas -rgbValue 0 0 0 -width 40 -height 20 RH_VCP_Inspector_Canvas_MinRGB;
+				canvas -rgbValue 0 0 0 -width 40 -height 5 RH_VCP_Inspector_Canvas_MinAlpha;
+				text -label "";
+				floatField -w 40 -h 22 -pre 3 -value 0.0 -editable false RH_VCP_Inspector_FF_MinR;
+				floatField -w 40 -h 22 -pre 3 -value 0.0 -editable false RH_VCP_Inspector_FF_MinG;
+				floatField -w 40 -h 22 -pre 3 -value 0.0 -editable false RH_VCP_Inspector_FF_MinB;
+				floatField -w 40 -h 22 -pre 3 -value 0.0 -editable false RH_VCP_Inspector_FF_MinA;
+				text -label "";
+				floatField -w 40 -h 22 -pre 1 -value 0.0 -editable false RH_VCP_Inspector_FF_MinH;
+				floatField -w 40 -h 22 -pre 3 -value 0.0 -editable false RH_VCP_Inspector_FF_MinS;
+				floatField -w 40 -h 22 -pre 3 -value 0.0 -editable false RH_VCP_Inspector_FF_MinV;
+			setParent..;
+			columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 0 -cw 40;
+				text -label (VCP_uiRes("m_RH_VCP.kColInspector_Max"));
+				canvas -rgbValue 1 1 1 -width 40 -height 20 RH_VCP_Inspector_Canvas_MaxRGB;
+				canvas -rgbValue 1 1 1 -width 40 -height 5 RH_VCP_Inspector_Canvas_MaxAlpha;
+				text -label "";
+				floatField -w 40 -h 22 -pre 3 -value 1.0 -editable false RH_VCP_Inspector_FF_MaxR;
+				floatField -w 40 -h 22 -pre 3 -value 1.0 -editable false RH_VCP_Inspector_FF_MaxG;
+				floatField -w 40 -h 22 -pre 3 -value 1.0 -editable false RH_VCP_Inspector_FF_MaxB;
+				floatField -w 40 -h 22 -pre 3 -value 1.0 -editable false RH_VCP_Inspector_FF_MaxA;
+				text -label "";
+				floatField -w 40 -h 22 -pre 1 -value 360.0 -editable false RH_VCP_Inspector_FF_MaxH;
+				floatField -w 40 -h 22 -pre 3 -value 1.0 -editable false RH_VCP_Inspector_FF_MaxS;
+				floatField -w 40 -h 22 -pre 3 -value 1.0 -editable false RH_VCP_Inspector_FF_MaxV;
+			setParent..;
+			columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 0 -cw 40;
+				text -label (VCP_uiRes("m_RH_VCP.kColInspector_Average"));
+				canvas -rgbValue 0.5 0.5 0.5 -width 40 -height 20 RH_VCP_Inspector_Canvas_AvgRGB;
+				canvas -rgbValue 0.5 0.5 0.5 -width 40 -height 5 RH_VCP_Inspector_Canvas_AvgAlpha;
+				text -label "";
+				floatField -w 40 -h 22 -pre 3 -value 0.5 -editable false RH_VCP_Inspector_FF_AvgR;
+				floatField -w 40 -h 22 -pre 3 -value 0.5 -editable false RH_VCP_Inspector_FF_AvgG;
+				floatField -w 40 -h 22 -pre 3 -value 0.5 -editable false RH_VCP_Inspector_FF_AvgB;
+				floatField -w 40 -h 22 -pre 3 -value 0.5 -editable false RH_VCP_Inspector_FF_AvgA;
+				text -label "";
+				floatField -w 40 -h 22 -pre 1 -value 180.0 -editable false RH_VCP_Inspector_FF_AvgH;
+				floatField -w 40 -h 22 -pre 3 -value 0.5 -editable false RH_VCP_Inspector_FF_AvgS;
+				floatField -w 40 -h 22 -pre 3 -value 0.5 -editable false RH_VCP_Inspector_FF_AvgV;
+			setParent..;
+		setParent..;
+
+		text -label ("0 " + (VCP_uiRes("m_RH_VCP.kColInspector_UniqueColours"))) RH_VCP_Inspector_Label_NumUnique;
+
+		RH_VCP_BlankSeparator();
+
+		$BN_update=`button -label (VCP_uiRes("m_RH_VCP.kColInspector_Refresh")) -h 30`;
+	setParent ..;
+
+	string $updateCommand="VCP_VertexColourInspectorUpdate";
+	button -edit -command $updateCommand $BN_update;
+	
+	// Create the scriptjob
+	int $jobNum = `scriptJob -parent $VTwin2 -event SelectionChanged $updateCommand`;
+	// Run the script job
+	eval($updateCommand);
+
+	//
+	// Resize window
+	//
+	//window -e -resizeToFitChildren true $VTwin2;
+	//window -e -resizeToFitChildren false $VTwin2;
+		
+	showWindow $VTwin2;
+	window -e -widthHeight 165 325 $VTwin2;
+}

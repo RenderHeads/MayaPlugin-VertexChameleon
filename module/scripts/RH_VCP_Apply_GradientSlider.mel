@@ -1,0 +1,165 @@
+//
+// Vertex Chameleon Maya Plugin Source Code
+// Copyright (C) 2007-2014 RenderHeads Ltd.
+//
+// This source is available for distribution and/or modification
+// only under the terms of the MIT license.  All rights reserved.
+//
+// The source is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// FITNESS FOR A PARTICULAR PURPOSE. See the MIT license
+// for more details.
+//
+
+global int $VCP_AdjustSliderMoving = 0;
+
+global proc
+VCP_AdjustGradientTint(string $sliderName)
+{
+	global string $RH_VCP_OldWireDisplay;
+	global int $VCP_AdjustSliderMoving;
+
+	float $amount = `floatSliderGrp -query -value $sliderName`;
+
+	if ($amount != 0.0)
+	{
+		if ($VCP_AdjustSliderMoving == 0)
+		{
+			VCP_CreateVertexColourStoreForSelection();
+
+			$VCP_AdjustSliderMoving = 1;
+			$RH_VCP_OldWireDisplay = `displayPref -q -wsa`;
+			displayPref -wireframeOnShadedActive "none";
+			undoInfo -swf 0;
+		}
+	}
+	if ($VCP_AdjustSliderMoving == 1)
+	{
+		VCP_AdjustGradientTintSliderCommand($amount, true);
+	}
+}
+
+global proc
+VCP_FinAdjustGradientTint(string $sliderName)
+{
+	global string $RH_VCP_OldWireDisplay;
+	global int $VCP_AdjustSliderMoving;
+
+	float $amount = `floatSliderGrp -query -value $sliderName`;
+
+	floatSliderGrp -edit -value 0.0 $sliderName;
+
+	// If the amount is zero apply it BEFORE we reenable undo's
+	if ($amount == 0.0)
+	{
+		VCP_AdjustGradientTintSliderCommand($amount, false);
+		undoInfo -swf 1;
+	}
+	else
+	{
+		undoInfo -swf 1;
+		VCP_AdjustGradientTintSliderCommand($amount, false);
+	}
+
+	VCP_RemoveColourStoreForSelection();
+
+	$VCP_AdjustSliderMoving = 0;
+	displayPref -wireframeOnShadedActive $RH_VCP_OldWireDisplay;
+}
+
+
+global proc
+VCP_AdjustGradientTintSliderCommand(float $amount, int $skipundo)
+{
+	global float $VCP_Apply_RGBA[];
+
+
+
+	string $command = "RH_VertexPolyColour -op 402 -nodeSource ";
+	$command += " -masterBlend " + $amount * 0.01;
+
+	if (`optionVar -query RH_VCP_NoUndo`)
+		$command += " -nun ";
+
+	int $forceComponent = `optionVar -query RH_VCP_ComponentOverride`;
+	if ($forceComponent > 1)
+	{
+		if ($forceComponent == 2)
+			$command += " -forceComponent 1 ";
+		if ($forceComponent == 3)
+			$command += " -forceComponent 2 ";
+	}
+
+	string $gradType = `optionVar -query "RH_VCP_GradientType"`;
+	switch ($gradType)
+	{
+		case "X-Axis":
+		$command += " -gradientType X ";
+		break;
+		case "Y-Axis":
+		$command += " -gradientType Y ";
+		break;
+		case "Z-Axis":
+		$command += " -gradientType Z ";
+		break;
+		case "Spherical":
+		$command += " -gradientType Spherical ";
+		break;
+	}
+
+	if ($gradType == "Spherical")
+	{
+		if (`optionVar -query RH_VCP_GradientOverrideCenter`)
+		{
+			$command += " -gradientOverrideCenter";
+			float $startpos[] = `optionVar -query RH_VCP_GradientStartPos`;
+			$command += " -gradientStartPos " + $startpos[0] + " " + $startpos[1] + " " + $startpos[2];
+		}
+
+		if (`optionVar -query RH_VCP_GradientOverrideRadius`)
+		{
+			$command += " -gradientOverrideRadius";
+			float $radius = `optionVar -query RH_VCP_GradientRadius`;
+			$command += " -gradientRadius " + $radius;
+		}
+	}
+
+	float $rgba1[] = `optionVar -query "RH_VCP_GradientCol1"`;
+	float $rgba2[] = `optionVar -query "RH_VCP_GradientCol2"`;
+	$command += " -gradCol1 " + $rgba1[0] + " " + $rgba1[1] + " " + $rgba1[2] + " " + $rgba1[3];
+	$command += " -gradCol2 " + $rgba2[0] + " " + $rgba2[1] + " " + $rgba2[2] + " " + $rgba2[3];
+
+	int $reverse = `optionVar -query RH_VCP_GradientReverse`;
+	if ($reverse != 0)
+		$command += " -gradientReverse ";
+
+	string $repeatMode = `optionVar -query RH_VCP_GradientRepeat`;
+	$command += " -gradientRepeat " + $repeatMode;
+
+	float $repeats = `optionVar -query RH_VCP_GradientRepeats`;
+	$command += " -gradientRepeats " + $repeats;
+
+	float $offset = `optionVar -query RH_VCP_GradientOffset`;
+	$command += " -gradientOffset " + $offset;
+
+	float $blendAmount = `optionVar -query "RH_VCP_Gradient_BlendAmount"` * 0.01;
+	if ($blendAmount != 0.0)
+	{
+		string $blendMode = `optionVar -query "RH_VCP_Gradient_BlendMode"`;
+		
+		$command += " -blend " + $blendAmount;
+		$command += " -blendMode \"" + $blendMode + "\"";
+	}
+
+	eval($command);
+}
+
+global proc
+VCP_SetupGradientTintSlider(string $sliderName)
+{
+	$doCommand = ("VCP_FinAdjustGradientTint " + $sliderName);
+	floatSliderGrp -edit -changeCommand $doCommand $sliderName;
+	
+	$doCommand = ("VCP_AdjustGradientTint " + $sliderName);
+	floatSliderGrp -edit -dragCommand $doCommand $sliderName;
+}

@@ -1,0 +1,512 @@
+//
+// Vertex Chameleon Maya Plugin Source Code
+// Copyright (C) 2007-2014 RenderHeads Ltd.
+//
+// This source is available for distribution and/or modification
+// only under the terms of the MIT license.  All rights reserved.
+//
+// The source is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// FITNESS FOR A PARTICULAR PURPOSE. See the MIT license
+// for more details.
+//
+
+// General
+VCP_DisplayString "メニューが見つかりません: " m_RH_VCP.kGeneral_CantFindMenuItem;
+
+// Shelf Icon
+VCP_DisplayString "Launch Vertex Chameleon UI" m_RH_VCP.kGeneral_ShelfLaunch;
+
+// Tab Titles
+VCP_DisplayString "カラー適用" m_RH_VCP.kTabTitle_Apply;
+VCP_DisplayString "カラー編集" m_RH_VCP.kTabTitle_Adjust;
+VCP_DisplayString "その他" m_RH_VCP.kTabTitle_Extra;
+VCP_DisplayString "設定" m_RH_VCP.kTabTitle_Settings;
+VCP_DisplayString "VCについて" m_RH_VCP.kTabTitle_About;
+
+// About - Credits
+VCP_DisplayString "クレジット" m_RH_VCP.kCredits_Title;
+VCP_DisplayString "Graphics software and tools development" m_RH_VCP.kCredits_SoftwareDevelopment;
+
+// About - License
+VCP_DisplayString "ライセンス" m_RH_VCP.kLicense_Title;
+VCP_DisplayString "登録情報: " m_RH_VCP.kLicense_RegisteredTo;
+VCP_DisplayString "ライセンス入力" m_RH_VCP.kLicense_EnterNewKey;
+VCP_DisplayString "ライセンス購入" m_RH_VCP.kLicense_PurchaseKey;
+VCP_DisplayString "状態: " m_RH_VCP.kLicense_Status;
+
+// About - Plugin Info
+VCP_DisplayString "プラグイン情報" m_RH_VCP.kPluginInfo_Title;
+VCP_DisplayString "plugin not loaded" m_RH_VCP.kPluginInfo_NotLoaded;
+VCP_DisplayString "名前: " m_RH_VCP.kPluginInfo_Name;
+VCP_DisplayString "Ver: " m_RH_VCP.kPluginInfo_Version;
+VCP_DisplayString "作成日: " m_RH_VCP.kPluginInfo_Built;
+VCP_DisplayString "販売元: " m_RH_VCP.kPluginInfo_Vendor;
+VCP_DisplayString "パス: " m_RH_VCP.kPluginInfo_Path;
+
+// About - Links
+VCP_DisplayString "リンク" m_RH_VCP.kLinks_Title;
+VCP_DisplayString "Webサイト" m_RH_VCP.kLinks_VCWebsite;
+VCP_DisplayString "フォーラム" m_RH_VCP.kLinks_PluginForum;
+VCP_DisplayString "マニュアル (ローカル)" m_RH_VCP.kLinks_DocsLocal;
+VCP_DisplayString "マニュアル (インターネット)" m_RH_VCP.kLinks_DocsInternet;
+
+// Settings - UI
+VCP_DisplayString "UI" m_RH_VCP.kUISettings_Title;
+VCP_DisplayString "RGBA値表示" m_RH_VCP.kUISettings_ChannelRange;
+VCP_DisplayString "ポリゴンメニューセットに追加" m_RH_VCP.kUISettings_AddMenu;
+VCP_DisplayString "シェルフを追加" m_RH_VCP.kUISettings_AddShelf;
+VCP_DisplayString "チャンネルボックスに格納" m_RH_VCP.kUISettings_DockChannelBox;
+VCP_DisplayString "別のウインドウで表示" m_RH_VCP.kUISettings_TearOff;
+
+// Settings - Operation
+VCP_DisplayString "操作" m_RH_VCP.kOpSettings_Title;
+VCP_DisplayString "Preserve Vertex-Face Colours (Hard Edges)" m_RH_VCP.kOpSettings_PreserveVertexFace;
+VCP_DisplayString "頂点カラーペイントツールに同期" m_RH_VCP.kOpSettings_SyncPaint;
+VCP_DisplayString "詳細なログを表示" m_RH_VCP.kOpSettings_VerboseOutput;
+VCP_DisplayString "起動時に設定を初期化" m_RH_VCP.kOpSettings_ResetStartup;
+VCP_DisplayString "設定を初期化" m_RH_VCP.kOpSettings_ResetDefaults;
+
+// Menus
+VCP_DisplayString "Vertex Chameleon" m_RH_VCP.kMenu_Title;
+VCP_DisplayString "Chameleon Window" m_RH_VCP.kMenu_ChameleonWindow;
+
+// Menu - Tools
+VCP_DisplayString "ツール" m_RH_VCP.kMenu_ToolsTitle;
+VCP_DisplayString "レイヤー ( Maya 7.0 以上 )" m_RH_VCP.kMenu_LayersMaya7Required;
+VCP_DisplayString "カラー見本" m_RH_VCP.kMenu_ColourSwatch;
+VCP_DisplayString "カラー情報" m_RH_VCP.kMenu_ColourInspector;
+
+// Menu - View
+VCP_DisplayString "表示" m_RH_VCP.kMenu_ViewTitle;
+VCP_DisplayString "リセット" m_RH_VCP.kMenu_ViewReset;
+VCP_DisplayString "頂点カラーのみ" m_RH_VCP.kMenu_ViewVertexColourOnly;
+VCP_DisplayString "頂点カラー＋テクスチャ" m_RH_VCP.kMenu_PlusTexture;
+VCP_DisplayString "頂点カラー＋テクスチャ＋ライト" m_RH_VCP.kMenu_PlusTextureLight;
+
+// Menu - Shortcuts (Maya Tools)
+VCP_DisplayString "Mayaツール" m_RH_VCP.kMenu_MayaToolsTitle;
+VCP_DisplayString "カラーの適用" m_RH_VCP.kMenu_Shortcut_ApplyColor;
+VCP_DisplayString "頂点カラー ペイント ツール" m_RH_VCP.kMenu_Shortcut_PaintColor;
+VCP_DisplayString "プリライト(Maya)" m_RH_VCP.kMenu_Shortcut_BakeMaya;
+VCP_DisplayString "バッチベイク(mental Ray)" m_RH_VCP.kMenu_Shortcut_BakeMentalRay;
+VCP_DisplayString "頂点カラー アトリビュート マップ" m_RH_VCP.kMenu_Shortcut_AttributeMapImportExport;
+VCP_DisplayString "Transfer Colours" m_RH_VCP.kMenu_Shortcut_TransferColours;
+VCP_DisplayString "カラー セット エディタ" m_RH_VCP.kMenu_Shortcut_ColorSetEditor;
+VCP_DisplayString "コンポーネント エディタ" m_RH_VCP.kMenu_Shortcut_ComponentEditor;
+
+// Menu - Help
+VCP_DisplayString "ヘルプ" m_RH_VCP.kMenu_HelpTitle;
+VCP_DisplayString "ライセンス" m_RH_VCP.kMenu_Help_LicenseManager;
+VCP_DisplayString "マニュアル (ローカル)" m_RH_VCP.kMenu_Help_DocsLocal;
+VCP_DisplayString "マニュアル (インターネット)" m_RH_VCP.kMenu_Help_DocsInternet;
+VCP_DisplayString "バグ レポート" m_RH_VCP.kMenu_Help_ReportBug;
+VCP_DisplayString "要望" m_RH_VCP.kMenu_Help_MakeSuggestion;
+VCP_DisplayString "Webサイト" m_RH_VCP.kMenu_Help_VCWebsite;
+VCP_DisplayString "フォーラム" m_RH_VCP.kMenu_Help_PluginForum;
+VCP_DisplayString "設定初期化" m_RH_VCP.kMenu_Help_ResetSettings;
+
+// Menu - Operations
+VCP_DisplayString "操作" m_RH_VCP.kMenu_OperationsTitle;
+
+// Menu - Operations - Apply
+VCP_DisplayString "カラー適用" m_RH_VCP.kMenu_ApplyTitle;
+VCP_DisplayString "カラー適用" m_RH_VCP.kMenu_ApplyColour;
+VCP_DisplayString "ランダム適用" m_RH_VCP.kMenu_RandomiseCompontents;
+VCP_DisplayString "3Dテクスチャ" m_RH_VCP.kMenu_Apply3DTexture;
+VCP_DisplayString "グラデーション" m_RH_VCP.kMenu_GradientTool;
+VCP_DisplayString "MentalRayベイク" m_RH_VCP.kMenu_MentalRayBaking;
+
+// Menu - Operations - Adjust
+VCP_DisplayString "カラー調整" m_RH_VCP.kMenu_AdjustTitle;
+VCP_DisplayString "RGBA調整" m_RH_VCP.kMenu_AdjustRGB;
+VCP_DisplayString "色相彩度" m_RH_VCP.kMenu_AdjustHSV;
+VCP_DisplayString "明るさコントラスト" m_RH_VCP.kMenu_AdjustBC;
+VCP_DisplayString "レベル補正" m_RH_VCP.kMenu_AdjustLevels;
+VCP_DisplayString "フィルター" m_RH_VCP.kMenu_Filters;
+VCP_DisplayString "補正ツール" m_RH_VCP.kMenu_NudgeTool;
+
+// Menu - Operations - Extra
+VCP_DisplayString "その他" m_RH_VCP.kMenu_ExtraTitle;
+VCP_DisplayString "クランプ" m_RH_VCP.kMenu_ChannelClamp;
+VCP_DisplayString "サチュレート" m_RH_VCP.kMenu_ChannelSaturate;
+VCP_DisplayString "チャンネル入替え" m_RH_VCP.kMenu_ChannelSwap;
+VCP_DisplayString "コントラスト" m_RH_VCP.kMenu_ChannelContrast;
+VCP_DisplayString "反転" m_RH_VCP.kMenu_Invert;
+VCP_DisplayString "ポスタリゼーション" m_RH_VCP.kMenu_Posterize;
+VCP_DisplayString "法線 -> 頂点カラー" m_RH_VCP.kMenu_Normals2RGB;
+VCP_DisplayString "Facetise" m_RH_VCP.kMenu_Facetise;
+
+// Main UI
+VCP_DisplayString "エッジ表示" m_RH_VCP.kMainUI_ToggleWire;
+VCP_DisplayString "通常" m_RH_VCP.kMainUI_ComponentMode_Default;
+VCP_DisplayString "頂点に適用" m_RH_VCP.kMainUI_ComponentMode_Vertices;
+VCP_DisplayString "頂点ﾌｪｰｽに適用" m_RH_VCP.kMainUI_ComponentMode_VertexFaces;
+
+// Attribute Map
+VCP_DisplayString "頂点カラー アトリビュート マップ" m_RH_VCP.kAttribMap_WindowTitle;
+VCP_DisplayString " アトリビュート マップ " m_RH_VCP.kAttribMap_FrameTitle;
+
+// Colour Swatch
+VCP_DisplayString "カラー見本" m_RH_VCP.kSwatch_WindowTitle;
+VCP_DisplayString "カラー情報" m_RH_VCP.kSwatch_WindowTitleShort;
+
+// Blend Modes
+VCP_DisplayString "通常" m_RH_VCP.kBlendMode_Replace;
+VCP_DisplayString "加算" m_RH_VCP.kBlendMode_Add;
+VCP_DisplayString "減算" m_RH_VCP.kBlendMode_Subtract;
+VCP_DisplayString "乗算" m_RH_VCP.kBlendMode_Multiply;
+VCP_DisplayString "差の絶対値" m_RH_VCP.kBlendMode_Difference;
+VCP_DisplayString "スクリーン" m_RH_VCP.kBlendMode_Screen;
+VCP_DisplayString "オーバーレイ" m_RH_VCP.kBlendMode_Overlay;
+VCP_DisplayString "比較(明)" m_RH_VCP.kBlendMode_LightenOnly;
+VCP_DisplayString "比較(暗)" m_RH_VCP.kBlendMode_DarkenOnly;
+VCP_DisplayString "覆い焼き" m_RH_VCP.kBlendMode_Dodge;
+VCP_DisplayString "焼き込み" m_RH_VCP.kBlendMode_Burn;
+VCP_DisplayString "色相" m_RH_VCP.kBlendMode_HueReplace;
+VCP_DisplayString "彩度" m_RH_VCP.kBlendMode_SaturationReplace;
+VCP_DisplayString "カラー" m_RH_VCP.kBlendMode_ColourReplace;
+VCP_DisplayString "明度" m_RH_VCP.kBlendMode_ValueReplace;
+
+// Adjust - Brightness/Contrast
+VCP_DisplayString "明るさコントラスト" m_RH_VCP.kBC_FrameTitle;
+VCP_DisplayString "明るさ" m_RH_VCP.kBC_Brightness;
+VCP_DisplayString "コントラスト" m_RH_VCP.kBC_Contrast;
+
+// Adjust - Filters
+VCP_DisplayString "フィルター" m_RH_VCP.kFilters_FrameTitle;
+VCP_DisplayString "ぼかし" m_RH_VCP.kFilters_Blur;
+VCP_DisplayString "シャープ" m_RH_VCP.kFilters_Sharpen;
+VCP_DisplayString "膨張" m_RH_VCP.kFilters_Dilate;
+VCP_DisplayString "収縮" m_RH_VCP.kFilters_Erode;
+VCP_DisplayString "ブレンド" m_RH_VCP.kFilters_Blending;
+VCP_DisplayString "適用" m_RH_VCP.kFilters_Apply;
+
+// Adjust - HSV
+VCP_DisplayString "色相彩度" m_RH_VCP.kHSV_FrameTitle;
+VCP_DisplayString "色相" m_RH_VCP.kHSV_Hue;
+VCP_DisplayString "彩度" m_RH_VCP.kHSV_Saturation;
+VCP_DisplayString "明度" m_RH_VCP.kHSV_Value;
+
+// Adjust - Levels
+VCP_DisplayString "レベル補正" m_RH_VCP.kLevels_FrameTitle;
+VCP_DisplayString "入力黒" m_RH_VCP.kLevels_InBlack;
+VCP_DisplayString "入力白" m_RH_VCP.kLevels_InWhite;
+VCP_DisplayString "中間色" m_RH_VCP.kLevels_InGamma;
+VCP_DisplayString "出力黒" m_RH_VCP.kLevels_OutBlack;
+VCP_DisplayString "出力白" m_RH_VCP.kLevels_OutWhite;
+
+// Adjust - Nudge
+VCP_DisplayString "補正ツール" m_RH_VCP.kNudge_FrameTitle;
+VCP_DisplayString "赤" m_RH_VCP.kNudge_Red;
+VCP_DisplayString "+ 赤" m_RH_VCP.kNudge_RedA;
+VCP_DisplayString "- 赤" m_RH_VCP.kNudge_RedR;
+VCP_DisplayString "黄" m_RH_VCP.kNudge_Yellow;
+VCP_DisplayString "+ 黄" m_RH_VCP.kNudge_YellowA;
+VCP_DisplayString "- 黄" m_RH_VCP.kNudge_YellowR;
+VCP_DisplayString "緑" m_RH_VCP.kNudge_Green;
+VCP_DisplayString "+ 緑" m_RH_VCP.kNudge_GreenA;
+VCP_DisplayString "- 緑" m_RH_VCP.kNudge_GreenR;
+VCP_DisplayString "水" m_RH_VCP.kNudge_Cyan;
+VCP_DisplayString "+ 水" m_RH_VCP.kNudge_CyanA;
+VCP_DisplayString "- 水" m_RH_VCP.kNudge_CyanR;
+VCP_DisplayString "青" m_RH_VCP.kNudge_Blue;
+VCP_DisplayString "+ 青" m_RH_VCP.kNudge_BlueA;
+VCP_DisplayString "- 青" m_RH_VCP.kNudge_BlueR;
+VCP_DisplayString "紫" m_RH_VCP.kNudge_Purple;
+VCP_DisplayString "+ 紫" m_RH_VCP.kNudge_PurpleA;
+VCP_DisplayString "- 紫" m_RH_VCP.kNudge_PurpleR;
+VCP_DisplayString "白" m_RH_VCP.kNudge_White;
+VCP_DisplayString "+ 白" m_RH_VCP.kNudge_WhiteA;
+VCP_DisplayString "+ 黒" m_RH_VCP.kNudge_WhiteR;
+VCP_DisplayString "色相" m_RH_VCP.kNudge_Hue;
+VCP_DisplayString "+ 色相" m_RH_VCP.kNudge_HueA;
+VCP_DisplayString "- 色相" m_RH_VCP.kNudge_HueR;
+VCP_DisplayString "彩度" m_RH_VCP.kNudge_Saturation;
+VCP_DisplayString "+ 彩度" m_RH_VCP.kNudge_SaturationA;
+VCP_DisplayString "- 彩度" m_RH_VCP.kNudge_SaturationR;
+VCP_DisplayString "明度" m_RH_VCP.kNudge_Lightness;
+VCP_DisplayString "+ 明度" m_RH_VCP.kNudge_LightnessA;
+VCP_DisplayString "- 明度" m_RH_VCP.kNudge_LightnessR;
+VCP_DisplayString "コントラスト" m_RH_VCP.kNudge_Contrast;
+VCP_DisplayString "+ ｺﾝﾄﾗｽﾄ" m_RH_VCP.kNudge_ContrastA;
+VCP_DisplayString "- ｺﾝﾄﾗｽﾄ" m_RH_VCP.kNudge_ContrastR;
+VCP_DisplayString "透明度" m_RH_VCP.kNudge_Alpha;
+VCP_DisplayString "+ 透明度" m_RH_VCP.kNudge_AlphaA;
+VCP_DisplayString "- 透明度" m_RH_VCP.kNudge_AlphaR;
+VCP_DisplayString "シャープ/ぼかし" m_RH_VCP.kNudge_SharpenBlur;
+VCP_DisplayString "シャープ" m_RH_VCP.kNudge_Sharpen;
+VCP_DisplayString "ぼかし" m_RH_VCP.kNudge_Blur;
+VCP_DisplayString "膨張/収縮" m_RH_VCP.kNudge_DilateErode;
+VCP_DisplayString "膨張" m_RH_VCP.kNudge_Dilate;
+VCP_DisplayString "収縮" m_RH_VCP.kNudge_Erode;
+
+// Adjust - RGBA
+VCP_DisplayString "RGBA調整" m_RH_VCP.kRGBA_FrameTitle;
+VCP_DisplayString "6色モード" m_RH_VCP.kRGBA_Rainbow;
+VCP_DisplayString "赤" m_RH_VCP.kRGBA_Red;
+VCP_DisplayString "黄" m_RH_VCP.kRGBA_Yellow;
+VCP_DisplayString "緑" m_RH_VCP.kRGBA_Green;
+VCP_DisplayString "水" m_RH_VCP.kRGBA_Cyan;
+VCP_DisplayString "青" m_RH_VCP.kRGBA_Blue;
+VCP_DisplayString "紫" m_RH_VCP.kRGBA_Magenta;
+VCP_DisplayString "透明度" m_RH_VCP.kRGBA_Alpha;
+
+// Apply - 3D Texture
+VCP_DisplayString "3Dテクスチャ" m_RH_VCP.k3DTexture_FrameTitle;
+VCP_DisplayString "3Dテクスチャ適用" m_RH_VCP.k3DTexture_Apply;
+VCP_DisplayString "作成" m_RH_VCP.k3DTexture_Create;
+VCP_DisplayString "削除" m_RH_VCP.k3DTexture_Delete;
+VCP_DisplayString "テクスチャの種類:" m_RH_VCP.k3DTexture_TextureType;
+VCP_DisplayString "アトリビュート エディタ" m_RH_VCP.k3DTexture_EditAttribs;
+VCP_DisplayString "スケール" m_RH_VCP.k3DTexture_Scale;
+VCP_DisplayString "ランダム" m_RH_VCP.k3DTexture_RandomSeed;
+VCP_DisplayString "ブレンド" m_RH_VCP.k3DTexture_Blending;
+
+// Apply - Apply Colour
+VCP_DisplayString "カラー適用" m_RH_VCP.kApplyColour_FrameTitle;
+VCP_DisplayString "カラー取得" m_RH_VCP.kApplyColour_Selection;
+VCP_DisplayString "自動" m_RH_VCP.kApplyColour_Auto;
+
+// Apply - Replace Colour
+VCP_DisplayString "カラー適用" m_RH_VCP.kReplaceColour_FrameTitle;
+VCP_DisplayString "自動更新" m_RH_VCP.kReplaceColour_AutoApply;
+VCP_DisplayString "RGB別更新" m_RH_VCP.kReplaceColour_JustChannel;
+VCP_DisplayString "色相" m_RH_VCP.kReplaceColour_Hue;
+VCP_DisplayString "色" m_RH_VCP.kReplaceColour_HueS;
+VCP_DisplayString "彩度" m_RH_VCP.kReplaceColour_Saturation;
+VCP_DisplayString "彩" m_RH_VCP.kReplaceColour_SaturationS;
+VCP_DisplayString "明度" m_RH_VCP.kReplaceColour_Value;
+VCP_DisplayString "明" m_RH_VCP.kReplaceColour_ValueS;
+VCP_DisplayString "赤" m_RH_VCP.kReplaceColour_Red;
+VCP_DisplayString "赤" m_RH_VCP.kReplaceColour_RedS;
+VCP_DisplayString "緑" m_RH_VCP.kReplaceColour_Green;
+VCP_DisplayString "緑" m_RH_VCP.kReplaceColour_GreenS;
+VCP_DisplayString "青" m_RH_VCP.kReplaceColour_Blue;
+VCP_DisplayString "青" m_RH_VCP.kReplaceColour_BlueS;
+VCP_DisplayString "透明" m_RH_VCP.kReplaceColour_Alpha;
+VCP_DisplayString "透" m_RH_VCP.kReplaceColour_AlphaS;
+VCP_DisplayString "カラーを適用" m_RH_VCP.kReplaceColour_ReplaceRGBA;
+
+// Apply - Blend Colour
+VCP_DisplayString "カラーをブレンド" m_RH_VCP.kBlendColour_FrameTitle;
+VCP_DisplayString "ブレンド" m_RH_VCP.kBlendColour_Blending;
+VCP_DisplayString "適用" m_RH_VCP.kBlendColour_Apply;
+
+// Apply - Gradient
+VCP_DisplayString "グラデーション" m_RH_VCP.kGradient_FrameTitle;
+VCP_DisplayString "ランプ" m_RH_VCP.kGradient_Ramp;
+VCP_DisplayString "２色" m_RH_VCP.kGradient_2Colour;
+VCP_DisplayString "マルチカラー" m_RH_VCP.kGradient_MultiColour;
+
+VCP_DisplayString "マルチカラー" m_RH_VCP.kGradient_MultiColourFrameTitle;
+VCP_DisplayString "グラデーション作成" m_RH_VCP.kGradient_CreateRamp;
+VCP_DisplayString "カラー" m_RH_VCP.kGradient_Colour;
+VCP_DisplayString "透明度" m_RH_VCP.kGradient_Transparency;
+
+VCP_DisplayString "２色" m_RH_VCP.kGradient_2ColourFrameTitle;
+VCP_DisplayString "カラー１" m_RH_VCP.kGradient_StartColour;
+VCP_DisplayString "カラー２" m_RH_VCP.kGradient_EndColour;
+VCP_DisplayString "<-入替え->" m_RH_VCP.kGradient_Swap;
+
+VCP_DisplayString "方向:" m_RH_VCP.kGradient_Type;
+VCP_DisplayString "X軸" m_RH_VCP.kGradient_XAxis;
+VCP_DisplayString "Y軸" m_RH_VCP.kGradient_YAxis;
+VCP_DisplayString "Z軸" m_RH_VCP.kGradient_ZAxis;
+VCP_DisplayString "球状" m_RH_VCP.kGradient_Spherical;
+
+VCP_DisplayString "球状グラデーション設定" m_RH_VCP.kGradient_SphericalFrameTitle;
+VCP_DisplayString "中心" m_RH_VCP.kGradient_CenterPoint;
+VCP_DisplayString "設定を有効にする" m_RH_VCP.kGradient_OverrideSelection;
+VCP_DisplayString "自動入力" m_RH_VCP.kGradient_GetFromSelection;
+VCP_DisplayString "半径" m_RH_VCP.kGradient_Radius;
+
+VCP_DisplayString "リピート" m_RH_VCP.kGradient_Repeat;
+VCP_DisplayString "クランプ" m_RH_VCP.kGradient_Clamp;
+VCP_DisplayString "ラップ" m_RH_VCP.kGradient_Wrap;
+VCP_DisplayString "ミラー" m_RH_VCP.kGradient_Mirror;
+VCP_DisplayString "リピート数" m_RH_VCP.kGradient_Repeats;
+VCP_DisplayString "オフセット" m_RH_VCP.kGradient_Offset;
+VCP_DisplayString "方向反転" m_RH_VCP.kGradient_ReverseDirection;
+
+VCP_DisplayString "ブレンド" m_RH_VCP.kGradient_Blending;
+VCP_DisplayString "適用" m_RH_VCP.kGradient_Apply;
+
+// Apply - Random Components
+VCP_DisplayString "ランダム適用" m_RH_VCP.kRandomComp_FrameTitle;
+VCP_DisplayString "赤" m_RH_VCP.kRandomComp_Red;
+VCP_DisplayString "緑" m_RH_VCP.kRandomComp_Green;
+VCP_DisplayString "青" m_RH_VCP.kRandomComp_Blue;
+VCP_DisplayString "透明度" m_RH_VCP.kRandomComp_Alpha;
+VCP_DisplayString "色相" m_RH_VCP.kRandomComp_Hue;
+VCP_DisplayString "彩度" m_RH_VCP.kRandomComp_Saturation;
+VCP_DisplayString "明度" m_RH_VCP.kRandomComp_Value;
+VCP_DisplayString "ブレンド" m_RH_VCP.kRandomComp_Blending;
+VCP_DisplayString "適用" m_RH_VCP.kRandomComp_Apply;
+
+// Apply - Mental Ray Baking
+VCP_DisplayString "Mental Ray ベイク" m_RH_VCP.kMRBake_FrameName;
+VCP_DisplayString "テクスチャをベイク" m_RH_VCP.kMRBake_Texture;
+VCP_DisplayString "テクスチャをベイク" m_RH_VCP.kMRBake_BakeTexture;
+VCP_DisplayString "ライトをベイク" m_RH_VCP.kMRBake_Lighting;
+VCP_DisplayString "影をベイク" m_RH_VCP.kMRBake_BakeShadows;
+VCP_DisplayString "ライトをベイク" m_RH_VCP.kMRBake_BakeLighting;
+VCP_DisplayString "アンビエントオクルージョン" m_RH_VCP.kMRBake_AmbientOcclusion;
+VCP_DisplayString "レイ" m_RH_VCP.kMRBake_Rays;
+VCP_DisplayString "減衰" m_RH_VCP.kMRBake_Falloff;
+VCP_DisplayString "ブレンド" m_RH_VCP.kMRBake_Blend;
+VCP_DisplayString "通常" m_RH_VCP.kMRBake_Replace;
+VCP_DisplayString "乗算" m_RH_VCP.kMRBake_Multiply;
+VCP_DisplayString "アンビエントオクルージョンをベイク" m_RH_VCP.kMRBake_BakeOcclusion;
+
+// Tool - Colour Inspector
+VCP_DisplayString "カラー情報" m_RH_VCP.kColInspector_WindowName;
+VCP_DisplayString "最小" m_RH_VCP.kColInspector_Min;
+VCP_DisplayString "最大" m_RH_VCP.kColInspector_Max;
+VCP_DisplayString "平均" m_RH_VCP.kColInspector_Average;
+VCP_DisplayString "カラー選択" m_RH_VCP.kColInspector_UniqueColours;
+VCP_DisplayString "赤" m_RH_VCP.kColInspector_R;
+VCP_DisplayString "緑" m_RH_VCP.kColInspector_G;
+VCP_DisplayString "青" m_RH_VCP.kColInspector_B;
+VCP_DisplayString "透" m_RH_VCP.kColInspector_A;
+VCP_DisplayString "色" m_RH_VCP.kColInspector_H;
+VCP_DisplayString "彩" m_RH_VCP.kColInspector_S;
+VCP_DisplayString "明" m_RH_VCP.kColInspector_V;
+VCP_DisplayString "情報更新" m_RH_VCP.kColInspector_Refresh;
+
+// Tool - Colour Swatch
+VCP_DisplayString "カラー見本" m_RH_VCP.kColSwatch_WindowName;
+VCP_DisplayString "新規" m_RH_VCP.kColSwatch_New;
+VCP_DisplayString "読込み" m_RH_VCP.kColSwatch_Load;
+VCP_DisplayString "削除" m_RH_VCP.kColSwatch_Delete;
+VCP_DisplayString "コピー" m_RH_VCP.kColSwatch_Copy;
+VCP_DisplayString "保存" m_RH_VCP.kColSwatch_Save;
+VCP_DisplayString "ｸﾞﾗﾃﾞ" m_RH_VCP.kColSwatch_Gradient;
+VCP_DisplayString "ﾗﾝﾀﾞﾑ" m_RH_VCP.kColSwatch_Random;
+VCP_DisplayString "エラー" m_RH_VCP.kColSwatch_Error;
+VCP_DisplayString "A swatch named '^1s' already exists." m_RH_VCP.kColSwatch_AlreadyExists;
+VCP_DisplayString "A swatch named" m_RH_VCP.kColSwatch_AlreadyExists_Split1;
+VCP_DisplayString "already exists." m_RH_VCP.kColSwatch_AlreadyExists_Split2;
+VCP_DisplayString "Please remove or rename the existing swatch." m_RH_VCP.kColSwatch_RemoveOrRename;
+VCP_DisplayString "Please remove or rename the existing swatch before loading the new swatch." m_RH_VCP.kColSwatch_RemoveOrRename2;
+
+// Extra - Saturate
+VCP_DisplayString "サチュレート (範囲外を 0 or 1 に変換)" m_RH_VCP.kSaturate_FrameTitle;
+VCP_DisplayString "最小" m_RH_VCP.kSaturate_Min;
+VCP_DisplayString "最大" m_RH_VCP.kSaturate_Max;
+VCP_DisplayString "赤" m_RH_VCP.kSaturate_Red;
+VCP_DisplayString "緑" m_RH_VCP.kSaturate_Green;
+VCP_DisplayString "青" m_RH_VCP.kSaturate_Blue;
+VCP_DisplayString "透明度" m_RH_VCP.kSaturate_Alpha;
+VCP_DisplayString "色相" m_RH_VCP.kSaturate_Hue;
+VCP_DisplayString "彩度" m_RH_VCP.kSaturate_Saturation;
+VCP_DisplayString "明度" m_RH_VCP.kSaturate_Value;
+VCP_DisplayString "適用" m_RH_VCP.kSaturate_Apply;
+VCP_DisplayString "RGBA適用" m_RH_VCP.kSaturate_ApplyRGBA;
+VCP_DisplayString "色相彩度適用" m_RH_VCP.kSaturate_ApplyHSV;
+
+// Extra - Contrast Channels
+VCP_DisplayString "コントラスト" m_RH_VCP.kContrastChannels_FrameTitle;
+VCP_DisplayString "赤" m_RH_VCP.kContrastChannels_Red;
+VCP_DisplayString "緑" m_RH_VCP.kContrastChannels_Green;
+VCP_DisplayString "青" m_RH_VCP.kContrastChannels_Blue;
+VCP_DisplayString "透明度" m_RH_VCP.kContrastChannels_Alpha;
+VCP_DisplayString "色相" m_RH_VCP.kContrastChannels_Hue;
+VCP_DisplayString "彩度" m_RH_VCP.kContrastChannels_Saturation;
+VCP_DisplayString "明度" m_RH_VCP.kContrastChannels_Value;
+
+// Extra - Clamp
+VCP_DisplayString "クランプ (範囲内に収める)" m_RH_VCP.kClamp_FrameTitle;
+VCP_DisplayString "最小" m_RH_VCP.kClamp_Min;
+VCP_DisplayString "最大" m_RH_VCP.kClamp_Max;
+VCP_DisplayString "赤" m_RH_VCP.kClamp_Red;
+VCP_DisplayString "緑" m_RH_VCP.kClamp_Green;
+VCP_DisplayString "青" m_RH_VCP.kClamp_Blue;
+VCP_DisplayString "透明度" m_RH_VCP.kClamp_Alpha;
+VCP_DisplayString "色相" m_RH_VCP.kClamp_Hue;
+VCP_DisplayString "彩度" m_RH_VCP.kClamp_Saturation;
+VCP_DisplayString "明度" m_RH_VCP.kClamp_Value;
+VCP_DisplayString "適用" m_RH_VCP.kClamp_Apply;
+VCP_DisplayString "RGBA適用" m_RH_VCP.kClamp_ApplyRGBA;
+VCP_DisplayString "色相彩度適用" m_RH_VCP.kClamp_ApplyHSV;
+
+// Extra - Channel Inverter
+VCP_DisplayString "反転" m_RH_VCP.kInvert_FrameTitle;
+VCP_DisplayString "RGB" m_RH_VCP.kInvert_RGB;
+VCP_DisplayString "カラー" m_RH_VCP.kInvert_Colour;
+VCP_DisplayString "透明度" m_RH_VCP.kInvert_Alpha;
+VCP_DisplayString "赤" m_RH_VCP.kInvert_Red;
+VCP_DisplayString "緑" m_RH_VCP.kInvert_Green;
+VCP_DisplayString "青" m_RH_VCP.kInvert_Blue;
+VCP_DisplayString "色相" m_RH_VCP.kInvert_Hue;
+VCP_DisplayString "彩度" m_RH_VCP.kInvert_Saturation;
+VCP_DisplayString "明度" m_RH_VCP.kInvert_Value;
+VCP_DisplayString "適用" m_RH_VCP.kInvert_Apply;
+
+// Extra - Posterize
+VCP_DisplayString "ポスタリゼーション" m_RH_VCP.kPosterize_FrameTitle;
+VCP_DisplayString "RGB" m_RH_VCP.kPosterize_RGB;
+VCP_DisplayString "赤" m_RH_VCP.kPosterize_Red;
+VCP_DisplayString "緑" m_RH_VCP.kPosterize_Green;
+VCP_DisplayString "青" m_RH_VCP.kPosterize_Blue;
+VCP_DisplayString "透明度" m_RH_VCP.kPosterize_Alpha;
+VCP_DisplayString "色相" m_RH_VCP.kPosterize_Hue;
+VCP_DisplayString "彩度" m_RH_VCP.kPosterize_Saturation;
+VCP_DisplayString "明度" m_RH_VCP.kPosterize_Value;
+
+// Extra - Channel Swapper
+VCP_DisplayString "チャンネル入替え" m_RH_VCP.kChanSwap_FrameTitle;
+VCP_DisplayString "赤" m_RH_VCP.kChanSwap_Red;
+VCP_DisplayString "緑" m_RH_VCP.kChanSwap_Green;
+VCP_DisplayString "青" m_RH_VCP.kChanSwap_Blue;
+VCP_DisplayString "色相" m_RH_VCP.kChanSwap_Hue;
+VCP_DisplayString "彩度" m_RH_VCP.kChanSwap_Saturation;
+VCP_DisplayString "明度" m_RH_VCP.kChanSwap_Value;
+VCP_DisplayString "透明度" m_RH_VCP.kChanSwap_Alpha;
+VCP_DisplayString "出力元" m_RH_VCP.kChanSwap_Source;
+VCP_DisplayString "出力先" m_RH_VCP.kChanSwap_Target;
+VCP_DisplayString "Between Colour Sets" m_RH_VCP.kChanSwap_BetweenColourSets;
+VCP_DisplayString "Between Colour Sets" m_RH_VCP.kChanSwap_BetweenColourSetsFrameTitle;
+VCP_DisplayString "Update From Selection" m_RH_VCP.kChanSwap_UpdateFromSelection;
+VCP_DisplayString "コピー" m_RH_VCP.kChanSwap_Copy;
+VCP_DisplayString "入替え" m_RH_VCP.kChanSwap_Swap;
+
+// Extra - Convert normals to colour
+VCP_DisplayString "Normals->RGB" m_RH_VCP.kConvNorm_FrameTitle;
+VCP_DisplayString "適用 Object-Space Normals" m_RH_VCP.kConvNorm_ApplyObject;
+VCP_DisplayString "適用 World-Space Normals" m_RH_VCP.kConvNorm_ApplyWorld;
+
+// Extra - Facetise
+VCP_DisplayString "Facetise" m_RH_VCP.kFacetise_FrameTitle;
+VCP_DisplayString "適用" m_RH_VCP.kFacetise_Apply;
+
+// Layers
+VCP_DisplayString "頂点カラーレイヤー" m_RH_VCP.kLayers_WindowTitle;
+VCP_DisplayString "レイヤー" m_RH_VCP.kLayers_WindowTitleShort;
+
+VCP_DisplayString "全レイヤー" m_RH_VCP.kLayers_FinalComposite;
+VCP_DisplayString "編集レイヤーのみ" m_RH_VCP.kLayers_ActiveLayer;
+VCP_DisplayString "複製" m_RH_VCP.kLayers_Duplicate;
+VCP_DisplayString "結合" m_RH_VCP.kLayers_Flatten;
+VCP_DisplayString "上へ" m_RH_VCP.kLayers_Up;
+VCP_DisplayString "下へ" m_RH_VCP.kLayers_Down;
+VCP_DisplayString "レイヤー情報更新" m_RH_VCP.kLayers_Refresh;
+
+VCP_DisplayString "エラー" m_RH_VCP.kLayers_Error;
+VCP_DisplayString "A layer named '^1s' already exists." m_RH_VCP.kLayers_LayerXExists;
+VCP_DisplayString "A layer named" m_RH_VCP.kLayers_LayerXExists_Split1;
+VCP_DisplayString "already exists." m_RH_VCP.kLayers_LayerXExists_Split2;
+VCP_DisplayString "Please remove or rename the existing layer." m_RH_VCP.kLayers_RemoveRenameLayer;
+
+VCP_DisplayString "クレータ" m_RH_VCP.k3DTexture_Crater;
+VCP_DisplayString "革" m_RH_VCP.k3DTexture_Leather;
+VCP_DisplayString "スタッコ" m_RH_VCP.k3DTexture_Stucco;
+VCP_DisplayString "ボリューム ノイズ" m_RH_VCP.k3DTexture_VolumeNoise;
+VCP_DisplayString "木目" m_RH_VCP.k3DTexture_Wood;
+
+VCP_DisplayString "新規作成" m_RH_VCP.kLayers_Create;
+VCP_DisplayString "削除" m_RH_VCP.kLayers_Delete;
+VCP_DisplayString "表示:" m_RH_VCP.kLayers_View;
+VCP_DisplayString "ﾒｯｼｭ:" m_RH_VCP.kLayers_Mesh;
+
+

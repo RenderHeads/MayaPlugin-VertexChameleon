@@ -1,0 +1,500 @@
+//
+// Vertex Chameleon Maya Plugin Source Code
+// Copyright (C) 2007-2014 RenderHeads Ltd.
+//
+// This source is available for distribution and/or modification
+// only under the terms of the MIT license.  All rights reserved.
+//
+// The source is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// FITNESS FOR A PARTICULAR PURPOSE. See the MIT license
+// for more details.
+//
+
+global proc
+VCP_MentalRay_Init()
+{
+	// Save selection
+	string $selection[] = `ls -selection`;
+
+	// Load the MR plugin
+	if (!`pluginInfo -q -loaded "Mayatomr"`)
+	{
+		loadPlugin "Mayatomr"; 
+		if (!`pluginInfo -q -loaded "Mayatomr"`)
+		{
+			error "Couldn't load Mental Ray plugin";
+			return;
+		}
+	}
+
+	// Create the MR global settings node
+	if (!`objExists mentalrayGlobals`)
+	{
+		miCreateGlobalsNode();
+	}
+
+	// Restore selection as "miCreateGlobalsNode" removes selection
+	select -r $selection;
+}
+
+global proc
+VCP_MentalRay_AmbientOcclusionBakeOptions()
+{
+	VCP_MentalRay_Init();
+
+	mrBakeToVertices(1);
+}
+
+// Apply a bake taking into account the VCP layering system
+global proc
+VCP_MentalRay_ApplyBake(string $shapes[], string $tempBakeSet, string $basecmd, int $mayaSupportsColorSets, int $mayaSupportsSpecifyingColorSet)
+{
+	// Go through each shape and do the baking
+	for ($shape in $shapes)
+	{
+		VCP_MentalRay_ApplyBakeToShape($shape, $tempBakeSet, $basecmd, $mayaSupportsColorSets, $mayaSupportsSpecifyingColorSet);
+	}
+}
+
+// Apply a bake taking into account the VCP layering system
+global proc
+VCP_MentalRay_ApplyBakeToShape(string $shape, string $tempBakeSet, string $basecmd, int $mayaSupportsColorSets, int $mayaSupportsSpecifyingColorSet)
+{
+	// Select the  shape
+	select -r $shape;
+
+	// Create alternating list of shadingGroups and shape names
+	string $shadingGroup[] = `listConnections -d 1 -s 0 -t "shadingEngine" $shape`;
+	string $bakeList;
+	for ($shaderNode in $shadingGroup)
+	{
+		$bakeList += " " + $shaderNode + " " + $shape;
+	}
+
+	string $currentColourSet;
+	// Set the appropriate colour set
+	// Only Maya 7 and above has colour sets
+	if ($mayaSupportsColorSets)
+	{
+		string $colorSets[] = `polyColorSet -q -allColorSets`;
+
+		// Get current colour set
+		{
+			string $csets[] = `polyColorSet -q -currentColorSet`;
+			if (`size $csets` > 0)
+			{
+				$currentColourSet = $csets[0];
+			}
+		}
+
+		// Get the parent transform of this shape
+		string $transform = $shape;
+		if (`nodeType $shape` == "mesh")
+		{
+			$transform = `firstParentOf $shape`;
+		}
+
+		// Check if this object has an active VCP layer
+		string $activeLayerName;
+		int $activeLayer = false;
+		if (`attributeQuery -node $transform -exists VCP_Layer_Active`)
+		{
+			$activeLayerName = `getAttr ($transform + ".VCP_Layer_Active")`;
+
+			if (`size $activeLayerName`>0)
+			{
+				for ($colorset in $colorSets)
+				{
+					if ($colorset == $activeLayerName)
+					{
+						$activeLayer = true;
+						break;
+					}
+				}
+			}
+		}
+
+		if ($activeLayer)
+		{
+			// Set the baker to use the active VCP layer colourSet
+			if ($mayaSupportsSpecifyingColorSet)
+				setAttr -type "string" ($tempBakeSet + ".colorSetName") $activeLayerName;
+			else
+				polyColorSet -e -currentColorSet -colorSet $activeLayerName;
+		}
+		else
+		{
+			// Set baker to use current colourSet (if you don't do this blending doesn't work due to a Maya bug)
+			if (`size $currentColourSet` > 0)
+			{
+				if ($mayaSupportsSpecifyingColorSet)
+					setAttr -type "string" ($tempBakeSet + ".colorSetName") $currentColourSet;
+			}
+		}
+	}
+
+	// Build command
+	$cmd = $basecmd + $bakeList;
+
+	// Execute command
+	eval($cmd);
+
+	// Restore the colour set because the bake changes it to the set it bakes to
+	// Only Maya 7 and above has colour sets
+	if ($mayaSupportsColorSets)
+	{
+		if (`size $currentColourSet` > 0)
+		{
+			polyColorSet -e -currentColorSet -colorSet $currentColourSet;
+		}
+	}
+}
+
+global proc
+VCP_MentalRay_AmbientOcclusionBakeSelection(int $customSettings)
+{
+	// Get selected shapes
+	$shapeSelection=`ls -l -dag -objectsOnly -geometry -ni -sl`;
+	if (`size $shapeSelection` == 0)
+		return;
+
+	VCP_MentalRay_Init();
+
+	// Create custom bake set
+	$tempBakeSet = createBakeSet("VCP_TempOverride", "vertexBakeSet");
+
+	// Assign bake set to selection
+	assignBakeSet $tempBakeSet "";
+
+	float $mayaVersion;
+	catchQuiet($mayaVersion = (float)`about -version`);  // Chop the maya version string into a float, we hide any conversion warnings that may arise
+	int $mayaSupportsColorSets = ($mayaVersion >= 7.0);
+
+	// Older versions of Maya (like 7.0) don't have a 'colorSetName' attribute on the vertexBakeSet node.
+	// To support baking to different colour sets we must then manually switch the current colorSet on the mesh
+	// to that of the activeLayer (if there is one), do the bake and then restore the colorSet.
+	int $mayaSupportsSpecifyingColorSet = attributeExists ("colorSetName", $tempBakeSet);
+
+	// Build base command & Setup bake set
+	$basecmd = "convertLightmap -vm ";
+	$basecmd += "-bakeSetOverride " + $tempBakeSet + " ";
+	if ($mayaSupportsColorSets)
+	{
+		// Configure our bake set
+		setAttr ($tempBakeSet + ".colorMode") 3;
+		if ($customSettings == 1)
+		{
+			setAttr ($tempBakeSet + ".occlusionRays") (`optionVar -q RH_VCP_AOBake_NumRays`);
+			setAttr ($tempBakeSet + ".occlusionFalloff") (`optionVar -q RH_VCP_AOBake_Falloff`);
+			setAttr ($tempBakeSet + ".colorBlending") 0;
+			if (`optionVar -q RH_VCP_AOBake_BlendMode` == "Multiply")
+			{
+				setAttr ($tempBakeSet + ".colorBlending") 3;
+			}
+		}
+		else
+		{
+			setAttr ($tempBakeSet + ".occlusionRays") 256;
+			setAttr ($tempBakeSet + ".occlusionFalloff ") 0.0;
+		}
+	}
+	else
+	{
+		$basecmd += " -nd \"front\" -content 4";
+	}
+
+	// BAKE!
+	VCP_MentalRay_ApplyBake($shapeSelection, $tempBakeSet, $basecmd, $mayaSupportsColorSets, $mayaSupportsSpecifyingColorSet);
+
+	// Delete the bake set
+	delete $tempBakeSet;
+}
+
+
+global proc
+VCP_MentalRay_TextureBakeSelection()
+{
+	// Get selected shapes
+	$shapeSelection=`ls -l -dag -objectsOnly -geometry -ni -sl`;
+	if (`size $shapeSelection` == 0)
+		return;
+
+	VCP_MentalRay_Init();
+
+	// Create custom bake set
+	$tempBakeSet = createBakeSet("VCP_TempOverride", "vertexBakeSet");
+
+	// Assign bake set to selection
+	assignBakeSet $tempBakeSet "";
+
+	float $mayaVersion;
+	catchQuiet($mayaVersion = (float)`about -version`);  // Chop the maya version string into a float, we hide any conversion warnings that may arise
+	int $mayaSupportsColorSets = ($mayaVersion >= 7.0);
+
+	// Older versions of Maya (like 7.0) don't have a 'colorSetName' attribute on the vertexBakeSet node.
+	// To support baking to different colour sets we must then manually switch the current colorSet on the mesh
+	// to that of the activeLayer (if there is one), do the bake and then restore the colorSet.
+	int $mayaSupportsSpecifyingColorSet = attributeExists ("colorSetName", $tempBakeSet);
+
+	// Build base command & Setup bake set
+	$basecmd = "convertLightmap -vm ";
+	$basecmd += "-bakeSetOverride " + $tempBakeSet + " ";
+	if ($mayaSupportsColorSets)
+	{
+		// Configure our bake set
+		setAttr ($tempBakeSet + ".colorMode") 0;
+	}
+	else
+	{
+		$basecmd += " -nd \"front\" -content 1";
+	}
+
+	// Save the visibility state for all lights in the scene
+	$lights = `ls -lights`;
+	int $lightVisible[];
+	for ($light in $lights)
+	{
+		$lightTransform = `firstParentOf $light`;
+		$lightVisible[size($lightVisible)] = getAttr ($lightTransform + ".visibility");
+	}
+
+	// Turn off all the lights in the scene
+	for ($light in $lights)
+	{
+		$lightTransform = `firstParentOf $light`;
+		setAttr ($lightTransform + ".visibility") false;
+	}
+
+	// Create ambient light
+	$ambientLight = `createNode ambientLight`;
+	setAttr ($ambientLight + ".ambientShade") 0.0;
+	$ambientTransform = $ambientLight;
+	if (`nodeType $ambientLight` == "ambientLight")
+	{
+		$ambientTransform = `firstParentOf $ambientLight`;
+	}
+
+	for ($shape in $shapeSelection)
+	{
+		// Link our ambient light to the shapes
+		lightlink -light $ambientLight -object $shape;
+	}
+
+	// BAKE!
+	VCP_MentalRay_ApplyBake($shapeSelection, $tempBakeSet, $basecmd, $mayaSupportsColorSets, $mayaSupportsSpecifyingColorSet);
+
+	// Delete ambient light
+	delete $ambientTransform;
+
+	// Restore the visibility state for all lights in the scene
+	int $visIndex = 0;
+	for ($light in $lights)
+	{
+		$lightTransform = `firstParentOf $light`;
+		setAttr ($lightTransform + ".visibility") $lightVisible[$visIndex];
+		$visIndex++;
+	}
+
+	// Delete the bake set
+	delete $tempBakeSet;
+}
+
+
+global proc
+VCP_MentalRay_LightingBakeSelection()
+{
+	// Get selected shapes
+	$shapeSelection=`ls -l -dag -objectsOnly -geometry -ni -sl`;
+	if (`size $shapeSelection` == 0)
+		return;
+
+	VCP_MentalRay_Init();
+
+	// Create custom bake set
+	$tempBakeSet = createBakeSet("VCP_TempOverride", "vertexBakeSet");
+
+	// Assign bake set to selection
+	assignBakeSet $tempBakeSet "";
+
+	float $mayaVersion;
+	catchQuiet($mayaVersion = (float)`about -version`);  // Chop the maya version string into a float, we hide any conversion warnings that may arise
+	int $mayaSupportsColorSets = ($mayaVersion >= 7.0);
+
+	// Older versions of Maya (like 7.0) don't have a 'colorSetName' attribute on the vertexBakeSet node.
+	// To support baking to different colour sets we must then manually switch the current colorSet on the mesh
+	// to that of the activeLayer (if there is one), do the bake and then restore the colorSet.
+	int $mayaSupportsSpecifyingColorSet = attributeExists ("colorSetName", $tempBakeSet);
+
+	// Build base command & Setup bake set
+	$basecmd = "convertLightmap -vm ";
+	$basecmd += "-bakeSetOverride " + $tempBakeSet + " ";
+	if ($mayaSupportsColorSets)
+	{
+		// Configure our bake set
+		setAttr ($tempBakeSet + ".colorMode") 1;
+	}
+	else
+	{
+		$basecmd += " -nd \"front\" -content 2";
+	}
+
+	if (1 == `optionVar -q "RH_VCP_LightBake_Shadows"`)
+	{
+		$basecmd += " -shadows ";
+	}
+
+	// BAKE!
+	VCP_MentalRay_ApplyBake($shapeSelection, $tempBakeSet, $basecmd, $mayaSupportsColorSets, $mayaSupportsSpecifyingColorSet);
+
+	// Delete the bake set
+	delete $tempBakeSet;
+}
+
+proc
+VCP_CreateFrame_MentalRay_BakeAmbientOcclusion_Content()
+{
+	columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 0;
+
+		$IS_rays=`intSliderGrp -label (VCP_uiRes("m_RH_VCP.kMRBake_Rays")) -field true -cw3 60 35 1 -min 0 -max 256 -value 64 -fieldMinValue 0 -fieldMaxValue 2048 -adjustableColumn 3`;
+
+		rowLayout -numberOfColumns 2 -cw2 60 35 -columnAlign 1 "right" -columnOffset2 10 0 -columnAttach2 "right" "left" -adjustableColumn 2;
+			text -label (VCP_uiRes("m_RH_VCP.kMRBake_Falloff")) -w 60;
+			$FF_falloff=`floatField -pre 3 -min 0 -w 35`;
+		setParent ..;
+
+		string $OM_blendMode = `optionMenuGrp -cw2 60 150 -adjustableColumn 2 -columnAlign 1 "right" -label (VCP_uiRes("m_RH_VCP.kMRBake_Blend"))`;
+			menuItem -label (VCP_uiRes("m_RH_VCP.kMRBake_Replace")) -ann "Replace";
+			menuItem -label (VCP_uiRes("m_RH_VCP.kMRBake_Multiply")) -ann "Multiply";
+		RH_VCP_BlankSeparator();
+
+		button -label (VCP_uiRes("m_RH_VCP.kMRBake_BakeOcclusion")) -command "VCP_MentalRay_AmbientOcclusionBakeSelection(1);" -h 30;
+
+	setParent ..;
+
+	// Settings
+	intSliderGrp -e -value `optionVar -q RH_VCP_AOBake_NumRays` $IS_rays;
+	floatField -e -value `optionVar -q RH_VCP_AOBake_Falloff` $FF_falloff;
+	RH_SetOptionMenuGrpValue_ByAnnotation($OM_blendMode, `optionVar -query RH_VCP_AOBake_BlendMode`);
+
+	// Commands
+	$cmd = "RH_SetVarFromIntSliderGrp " + $IS_rays + " RH_VCP_AOBake_NumRays;";
+	intSliderGrp -edit -cc $cmd $IS_rays;
+
+	$cmd = "VCP_SetVarFromFloatField " + $FF_falloff + " RH_VCP_AOBake_Falloff;";
+	floatField -edit -cc $cmd $FF_falloff;
+
+	optionMenuGrp -edit -changeCommand ("VCP_SetVarFromOptionMenuGrp_ByAnnotation " + $OM_blendMode + " RH_VCP_AOBake_BlendMode") $OM_blendMode;
+}
+
+proc
+VCP_CreateFrame_MentalRay_BakeTexture_Content()
+{
+	columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 0;
+		button -label (VCP_uiRes("m_RH_VCP.kMRBake_BakeTexture")) -command "VCP_MentalRay_TextureBakeSelection();" -h 30;
+	setParent ..;
+}
+
+proc
+VCP_CreateFrame_MentalRay_BakeLighting_Content()
+{
+	columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 0;
+		columnLayout -columnAlign "center" -columnOffset "left" 40 -adjustableColumn true -rowSpacing 0;
+			$CB_shadows = `checkBox -align left -label (VCP_uiRes("m_RH_VCP.kMRBake_BakeShadows"))`;
+		setParent ..;
+		button -label (VCP_uiRes("m_RH_VCP.kMRBake_BakeLighting")) -command "VCP_MentalRay_LightingBakeSelection();" -h 30;
+	setParent ..;
+
+	// Settings
+    if (`optionVar -query "RH_VCP_LightBake_Shadows"` == 1)
+    {
+	    checkBox -e -value true $CB_shadows;
+    }
+    else
+    {
+	    checkBox -e -value false $CB_shadows;
+    }
+
+	// Commands
+	checkBox -e -onCommand ("optionVar -intValue \"RH_VCP_LightBake_Shadows\" 1;") $CB_shadows;
+	checkBox -e -offCommand ("optionVar -intValue \"RH_VCP_LightBake_Shadows\" 0;") $CB_shadows;
+}
+
+global proc
+VCP_CreateFrame_MentalRay_BakeAmbientOcclusion()
+{
+	$frame = `frameLayout -label (VCP_uiRes("m_RH_VCP.kMRBake_AmbientOcclusion"))
+				-labelIndent 4
+				-borderStyle "etchedIn"
+				-collapsable false
+				-marginWidth 4
+				-marginHeight 4`;
+		VCP_CreateFrame_MentalRay_BakeAmbientOcclusion_Content();
+	setParent ..;
+}
+
+global proc
+VCP_CreateFrame_MentalRay_BakeTexture()
+{
+	$frame = `frameLayout -label (VCP_uiRes("m_RH_VCP.kMRBake_Texture"))
+				-labelIndent 4
+				-borderStyle "etchedIn"
+				-collapsable false
+				-marginWidth 4
+				-marginHeight 4`;
+		VCP_CreateFrame_MentalRay_BakeTexture_Content();
+	setParent ..;
+}
+
+global proc
+VCP_CreateFrame_MentalRay_BakeLighting()
+{
+	$frame = `frameLayout -label (VCP_uiRes("m_RH_VCP.kMRBake_Lighting"))
+				-labelIndent 4
+				-borderStyle "etchedIn"
+				-collapsable false
+				-marginWidth 4
+				-marginHeight 4`;
+		VCP_CreateFrame_MentalRay_BakeLighting_Content();
+	setParent ..;
+}
+
+global proc
+VCP_CreateFrame_MentalRay(int $hasFrame)
+{
+	if ($hasFrame)
+	{
+		int $frameCollapse = `optionVar -query "RH_VCP_FrameMentalRayBaking"`;
+		$frame = `frameLayout -label (VCP_uiRes("m_RH_VCP.kMRBake_FrameName"))
+					-labelIndent 4
+					-borderStyle "etchedIn"
+					-collapsable true
+					-collapse $frameCollapse
+					-marginWidth 4
+					-marginHeight 4`;
+			columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 0;
+				VCP_CreateFrame_MentalRay_BakeTexture();
+				VCP_CreateFrame_MentalRay_BakeLighting();
+				VCP_CreateFrame_MentalRay_BakeAmbientOcclusion();
+			setParent ..;
+		setParent ..;
+
+		frameLayout	-e -collapseCommand "optionVar -intValue RH_VCP_FrameMentalRayBaking 1" $frame;
+		frameLayout	-e -expandCommand "optionVar -intValue RH_VCP_FrameMentalRayBaking 0" $frame;
+	}
+	else
+	{
+		$frame = `frameLayout
+					-labelVisible false
+					-borderStyle "etchedIn"
+					-collapsable false
+					-marginWidth 4
+					-marginHeight 4`;
+			columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 0;
+				VCP_CreateFrame_MentalRay_BakeTexture();
+				VCP_CreateFrame_MentalRay_BakeLighting();
+				VCP_CreateFrame_MentalRay_BakeAmbientOcclusion();
+			setParent ..;
+		setParent ..;
+	}
+}

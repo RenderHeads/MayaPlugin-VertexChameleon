@@ -1,0 +1,298 @@
+//
+// Vertex Chameleon Maya Plugin Source Code
+// Copyright (C) 2007-2014 RenderHeads Ltd.
+//
+// This source is available for distribution and/or modification
+// only under the terms of the MIT license.  All rights reserved.
+//
+// The source is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// FITNESS FOR A PARTICULAR PURPOSE. See the MIT license
+// for more details.
+//
+
+global int $VCP_AdjustSliderMoving = 0;
+
+global proc
+VCP_CreateColourStoreForSelection()
+{
+	string $cmd = "RH_VertexPolyColour -op 1 ";
+
+	if (`optionVar -query RH_VCP_NoUndo`)
+		$cmd += " -nun ";
+
+	int $forceComponent = `optionVar -query RH_VCP_ComponentOverride`;
+	if ($forceComponent > 1)
+	{
+		if ($forceComponent == 2)
+			$cmd += " -forceComponent 1 ";
+		if ($forceComponent == 3)
+			$cmd += " -forceComponent 2 ";
+	}
+
+	eval($cmd);
+}
+
+global proc
+VCP_CreateVertexColourStoreForSelection()
+{
+	string $cmd = "RH_VertexPolyColour -op 1 ";
+
+	if (`optionVar -query RH_VCP_NoUndo`)
+		$cmd += " -nun ";
+
+	$cmd += " -forceComponent 1 ";
+
+	eval($cmd);
+}
+
+global proc
+VCP_CreateDefaultColourStoreForSelection()
+{
+	string $cmd = "RH_VertexPolyColour -op 1 ";
+
+	if (`optionVar -query RH_VCP_NoUndo`)
+		$cmd += " -nun ";
+
+	eval($cmd);
+}
+
+global proc
+VCP_CreateVertexColourDestinationStoreForSelection()
+{
+	string $cmd = "RH_VertexPolyColour -op 3 ";
+
+	if (`optionVar -query RH_VCP_NoUndo`)
+		$cmd += " -nun ";
+
+	$cmd += " -forceComponent 1 ";
+
+	eval($cmd);
+}
+
+global proc
+VCP_RemoveColourStoreForSelection()
+{
+	string $cmd = "RH_VertexPolyColour -op 2 ";
+
+	if (`optionVar -query RH_VCP_NoUndo`)
+		$cmd += " -nun ";
+
+	eval($cmd);
+}
+
+global proc
+VCP_Adjust(string $sliderName, string $channel, int $op)
+{
+	global string $RH_VCP_OldWireDisplay;
+	global int $VCP_AdjustSliderMoving;
+
+	float $amount = `floatSliderGrp -query -value $sliderName`;
+
+	if ($amount != 0.0)
+	{
+		if ($VCP_AdjustSliderMoving == 0)
+		{
+			VCP_CreateColourStoreForSelection();
+
+			$VCP_AdjustSliderMoving = 1;
+			$RH_VCP_OldWireDisplay = `displayPref -q -wsa`;
+			displayPref -wireframeOnShadedActive "none";
+			undoInfo -swf 0;
+		}
+	}
+	if ($VCP_AdjustSliderMoving == 1)
+	{
+		VCP_AdjustSliderCommand($channel, $amount, $op, true);
+	}
+}
+
+global proc
+VCP_FinAdjust(string $sliderName, string $channel, int $op)
+{
+	global string $RH_VCP_OldWireDisplay;
+	global int $VCP_AdjustSliderMoving;
+
+	float $amount = `floatSliderGrp -query -value $sliderName`;
+
+	floatSliderGrp -edit -value 0.0 $sliderName;
+
+	undoInfo -swf 1;
+	VCP_AdjustSliderCommand($channel, $amount, $op, false);
+
+	VCP_RemoveColourStoreForSelection();
+
+	$VCP_AdjustSliderMoving = 0;
+	displayPref -wireframeOnShadedActive $RH_VCP_OldWireDisplay;
+}
+
+global proc
+VCP_AdjustSliderCommand(string $channel, float $amount, int $op, int $skipundo)
+{
+	string $cmd = "RH_VertexPolyColour -nodeSource -" + $channel + " " + $amount + " -op " + $op;
+	if (`optionVar -query RH_VCP_Verbose` > 0)
+	{
+		$cmd += " -verbose ";
+	}
+	if (`optionVar -query RH_VCP_NoUndo`)
+		$cmd += " -nun ";
+
+	if ($skipundo > 0)
+	{
+		//$cmd += " -noUndo ";
+	}
+	int $forceComponent = `optionVar -query RH_VCP_ComponentOverride`;
+	if ($forceComponent > 1)
+	{
+		if ($forceComponent == 2)
+			$cmd += " -forceComponent 1 ";
+		if ($forceComponent == 3)
+			$cmd += " -forceComponent 2 ";
+	}
+	$cmd += " -channelMask " + `optionVar -q RH_VCP_ChannelMask` + " ";
+	eval($cmd);
+}
+
+global proc
+VCP_AdjustDual(string $sliderName, string $channel, string $channel2, int $op)
+{
+	global string $RH_VCP_OldWireDisplay;
+	global int $VCP_AdjustSliderMoving;
+
+	float $amount = `floatSliderGrp -query -value $sliderName`;
+
+	if ($amount != 0.0)
+	{
+		if ($VCP_AdjustSliderMoving == 0)
+		{
+			VCP_CreateColourStoreForSelection();
+
+			$VCP_AdjustSliderMoving = 1;
+			$RH_VCP_OldWireDisplay = `displayPref -q -wsa`;
+			displayPref -wireframeOnShadedActive "none";
+			undoInfo -swf 0;
+		}
+	}
+	if ($VCP_AdjustSliderMoving == 1)
+	{
+		string $cmd = "RH_VertexPolyColour -noUndo -nodeSource -" + $channel + " " + $amount + " -" + $channel2 + " " + $amount + " -op " + $op;
+		int $forceComponent = `optionVar -query RH_VCP_ComponentOverride`;
+		if ($forceComponent > 1)
+		{
+			if ($forceComponent == 2)
+				$cmd += " -forceComponent 1 ";
+			if ($forceComponent == 3)
+				$cmd += " -forceComponent 2 ";
+		}
+		$cmd += " -channelMask " + `optionVar -q RH_VCP_ChannelMask` + " ";
+		eval($cmd);
+	}
+}
+
+global proc
+VCP_FinAdjustDual(string $sliderName, string $channel, string $channel2, int $op)
+{
+	global string $RH_VCP_OldWireDisplay;
+	global int $VCP_AdjustSliderMoving;
+
+	float $amount = `floatSliderGrp -query -value $sliderName`;
+	
+	undoInfo -swf 1;
+	string $cmd = "RH_VertexPolyColour -nodeSource -" + $channel + " " + $amount + " -" + $channel2 + " " + $amount + " -op " + $op;
+
+	if (`optionVar -query RH_VCP_NoUndo`)
+		$cmd += " -nun ";
+
+	int $forceComponent = `optionVar -query RH_VCP_ComponentOverride`;
+	if ($forceComponent > 1)
+	{
+		if ($forceComponent == 2)
+			$cmd += " -forceComponent 1 ";
+		if ($forceComponent == 3)
+			$cmd += " -forceComponent 2 ";
+	}
+	$cmd += " -channelMask " + `optionVar -q RH_VCP_ChannelMask` + " ";
+	eval($cmd);
+
+	VCP_RemoveColourStoreForSelection();
+
+	floatSliderGrp -edit -value 0.0 $sliderName;
+	$VCP_AdjustSliderMoving = 0;
+	displayPref -wireframeOnShadedActive $RH_VCP_OldWireDisplay;
+}
+
+global proc
+VCP_SetupSlider(string $sliderName, string $channel, int $op)
+{
+	$doCommand = ("VCP_FinAdjust " + $sliderName + " " + $channel + " " + $op + ";");
+	floatSliderGrp -edit -changeCommand $doCommand $sliderName;
+	
+	$doCommand = ("VCP_Adjust " + $sliderName + " " + $channel + " " + $op + ";");
+	floatSliderGrp -edit -dragCommand $doCommand $sliderName;
+}
+
+global proc
+VCP_SetupSliderDual(string $sliderName, string $channel, string $channel2, int $op)
+{
+	$doCommand = ("VCP_FinAdjustDual " + $sliderName + " " + $channel + " " + $channel2 + " " + $op + ";");
+	floatSliderGrp -edit -changeCommand $doCommand $sliderName;
+	
+	$doCommand = ("VCP_AdjustDual " + $sliderName + " " + $channel + " " + $channel2 + " " + $op + ";");
+	floatSliderGrp -edit -dragCommand $doCommand $sliderName;
+}
+
+global proc string
+VCP_CreateTab_AdjustMain()
+{
+	string $layout = `scrollLayout -horizontalScrollBarThickness 0 -childResizable true`;
+        columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 0 -columnAttach "both" 0;
+
+		VCP_CreateFrame_RGB(1);
+		VCP_CreateFrame_HSV(1);
+		VCP_CreateFrame_BC(1);
+		VCP_CreateFrame_Levels(1);
+		VCP_CreateFrame_Filters(1);
+		VCP_CreateFrame_ChannelNudger(1);
+
+		
+		setParent ..;
+	setParent ..;
+	return $layout;
+}
+
+global proc string
+VCP_CreateTab_ApplyMain()
+{
+	string $layout = `scrollLayout -horizontalScrollBarThickness 0 -childResizable true`;
+        columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 0 -columnAttach "both" 0;
+
+		VCP_CreateFrame_ApplyColour(1);
+		VCP_CreateFrame_ApplyRandomiseComponents(1);
+		VCP_CreateFrame_3DTexture(1);
+		VCP_CreateFrame_Gradients(1);
+		VCP_CreateFrame_MentalRay(1);
+		
+		setParent ..;
+	setParent ..;
+	return $layout;
+}
+
+global proc string
+VCP_CreateTab_AdjustExtra()
+{
+	string $layout = `scrollLayout -horizontalScrollBarThickness 0 -childResizable true`;
+        columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 0 -columnAttach "both" 0;
+
+		VCP_CreateFrame_Clamp(1);
+		VCP_CreateFrame_Saturate(1);
+		VCP_CreateFrame_ChannelSwapper(1);
+		VCP_CreateFrame_ContrastChannels(1);
+		VCP_CreateFrame_Invert(1);
+		VCP_CreateFrame_Posterize(1);
+		VCP_CreateFrame_ConvertNormals(1);
+		VCP_CreateFrame_Facetise(1);
+		
+		setParent ..;
+	setParent ..;
+	return $layout;
+}

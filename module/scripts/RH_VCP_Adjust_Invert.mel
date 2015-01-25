@@ -1,0 +1,219 @@
+//
+// Vertex Chameleon Maya Plugin Source Code
+// Copyright (C) 2007-2014 RenderHeads Ltd.
+//
+// This source is available for distribution and/or modification
+// only under the terms of the MIT license.  All rights reserved.
+//
+// The source is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// FITNESS FOR A PARTICULAR PURPOSE. See the MIT license
+// for more details.
+//
+
+global int $VCP_AdjustSliderMoving = 0;
+
+global proc
+VCP_AdjustInvert(string $sliderName, string $channel)
+{
+	global string $RH_VCP_OldWireDisplay;
+	global int $VCP_AdjustSliderMoving;
+
+	float $amount = `floatSliderGrp -query -value $sliderName`;
+
+	if ($amount != 0.0)
+	{
+		if ($VCP_AdjustSliderMoving == 0)
+		{
+			VCP_CreateColourStoreForSelection();
+			$VCP_AdjustSliderMoving = 1;
+			$RH_VCP_OldWireDisplay = `displayPref -q -wsa`;
+			displayPref -wireframeOnShadedActive "none";
+			undoInfo -swf 0;
+		}
+		VCP_AdjustSliderInvertCommand($channel, $amount, true);
+	}
+}
+
+
+global proc
+VCP_AdjustSliderInvertCommand(string $channel, float $amount, int $skipundo)
+{
+	string $cmd = "RH_VertexPolyColour -op 204 -nodeSource -invert " + $channel + " -blend " + ($amount * 0.01) + " -blendMode replace ";
+	if (`optionVar -query RH_VCP_Verbose` > 0)
+	{
+		$cmd += " -verbose ";
+	}
+	if (`optionVar -query RH_VCP_NoUndo`)
+		$cmd += " -nun ";
+
+	if ($skipundo > 0)
+	{
+		//$cmd += " -noUndo ";
+	}
+	int $forceComponent = `optionVar -query RH_VCP_ComponentOverride`;
+	if ($forceComponent > 1)
+	{
+		if ($forceComponent == 2)
+			$cmd += " -forceComponent 1 ";
+		if ($forceComponent == 3)
+			$cmd += " -forceComponent 2 ";
+	}
+	$cmd += " -channelMask " + `optionVar -q RH_VCP_ChannelMask` + " ";
+	eval($cmd);
+}
+
+global proc
+VCP_AdjustSliderInvertApply100Command(string $channel, int $skipundo)
+{
+	string $cmd = "RH_VertexPolyColour -op 204 -invert " + $channel;
+	if (`optionVar -query RH_VCP_Verbose` > 0)
+	{
+		$cmd += " -verbose ";
+	}
+	if (`optionVar -query RH_VCP_NoUndo`)
+		$cmd += " -nun ";
+
+	if ($skipundo > 0)
+	{
+		//$cmd += " -noUndo ";
+	}
+	int $forceComponent = `optionVar -query RH_VCP_ComponentOverride`;
+	if ($forceComponent > 1)
+	{
+		if ($forceComponent == 2)
+			$cmd += " -forceComponent 1 ";
+		if ($forceComponent == 3)
+			$cmd += " -forceComponent 2 ";
+	}
+	$cmd += " -channelMask " + `optionVar -q RH_VCP_ChannelMask` + " ";
+	eval($cmd);
+}
+
+global proc
+VCP_FinAdjustInvert(string $sliderName, string $channel)
+{
+	global string $RH_VCP_OldWireDisplay;
+	global int $VCP_AdjustSliderMoving;
+
+	float $amount = `floatSliderGrp -query -value $sliderName`;
+
+	floatSliderGrp -edit -value 0.0 $sliderName;
+
+	// If the amount is zero apply it BEFORE we reenable undo's
+	if ($amount == 0.0)
+	{
+		VCP_AdjustSliderInvertCommand($channel, $amount, false);
+		undoInfo -swf 1;
+	}
+	else
+	{
+		undoInfo -swf 1;
+		VCP_AdjustSliderInvertCommand($channel, $amount, false);
+	}
+
+	VCP_RemoveColourStoreForSelection();
+
+	$VCP_AdjustSliderMoving = 0;
+	displayPref -wireframeOnShadedActive $RH_VCP_OldWireDisplay;
+}
+
+proc
+VCP_SetupInvertSlider(string $sliderName, string $buttonName, string $channel)
+{
+	$doCommand = ("VCP_FinAdjustInvert " + $sliderName + " " + $channel);
+	floatSliderGrp -edit -changeCommand $doCommand $sliderName;
+	
+	$doCommand = ("VCP_AdjustInvert " + $sliderName + " " + $channel);
+	floatSliderGrp -edit -dragCommand $doCommand $sliderName;
+
+	$doCommand = ("VCP_AdjustSliderInvertApply100Command " + $channel + " false");
+	button -e -command $doCommand $buttonName;
+}
+
+proc
+VCP_CreateFrame_Invert_Content()
+{
+	columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 0;
+		rowLayout -numberOfColumns 2 -cw2 200 50 -columnAlign 2 "center" -adjustableColumn2 1;
+			floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kInvert_RGB")) -field true  -cw3 60 40 40 -cc "" -pre 2 -min 0 -max 100 -value 0 -adjustableColumn 3 RH_VCP_invertRGB;
+			$BN_applyRGB=`button -w 50 -label (VCP_uiRes("m_RH_VCP.kInvert_Apply"))`;
+		setParent ..;
+		rowLayout -numberOfColumns 2 -cw2 200 50 -columnAlign 2 "center" -adjustableColumn2 1;
+			floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kInvert_Colour")) -field true  -cw3 60 40 40 -cc "" -pre 2 -min 0 -max 100 -value 0 -adjustableColumn 3 RH_VCP_invertColour;
+			$BN_applyColour=`button -w 50 -label (VCP_uiRes("m_RH_VCP.kInvert_Apply"))`;
+		setParent ..;
+		rowLayout -numberOfColumns 2 -cw2 200 50 -columnAlign 2 "center" -adjustableColumn2 1;
+			floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kInvert_Alpha")) -field true  -cw3 60 40 40 -cc "" -pre 2 -min 0 -max 100 -value 0 -adjustableColumn 3 RH_VCP_invertAlpha;
+			$BN_applyAlpha=`button -w 50 -label (VCP_uiRes("m_RH_VCP.kInvert_Apply"))`;
+		setParent ..;
+		separator;
+		rowLayout -numberOfColumns 2 -cw2 200 50 -columnAlign 2 "center" -adjustableColumn2 1;
+			floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kInvert_Red")) -field true  -cw3 60 40 40 -cc "" -pre 2 -min 0 -max 100 -value 0 -adjustableColumn 3 RH_VCP_invertRed;
+			$BN_applyRed=`button -w 50 -label (VCP_uiRes("m_RH_VCP.kInvert_Apply"))`;
+		setParent ..;
+		rowLayout -numberOfColumns 2 -cw2 200 50 -columnAlign 2 "center" -adjustableColumn2 1;
+			floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kInvert_Green")) -field true  -cw3 60 40 40 -cc "" -pre 2 -min 0 -max 100 -value 0 -adjustableColumn 3 RH_VCP_invertGreen;
+			$BN_applyGreen=`button -w 50 -label (VCP_uiRes("m_RH_VCP.kInvert_Apply"))`;
+		setParent ..;
+		rowLayout -numberOfColumns 2 -cw2 200 50 -columnAlign 2 "center" -adjustableColumn2 1;
+			floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kInvert_Blue")) -field true  -cw3 60 40 40 -cc "" -pre 2 -min 0 -max 100 -value 0 -adjustableColumn 3 RH_VCP_invertBlue;
+			$BN_applyBlue=`button -w 50 -label (VCP_uiRes("m_RH_VCP.kInvert_Apply"))`;
+		setParent ..;
+		separator;
+		rowLayout -numberOfColumns 2 -cw2 200 50 -columnAlign 2 "center" -adjustableColumn2 1;
+			floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kInvert_Hue")) -field true  -cw3 60 40 40 -cc "" -pre 2 -min 0 -max 100 -value 0 -adjustableColumn 3 RH_VCP_invertHue;
+			$BN_applyHue=`button -w 50 -label (VCP_uiRes("m_RH_VCP.kInvert_Apply"))`;
+		setParent ..;
+		rowLayout -numberOfColumns 2 -cw2 200 50 -columnAlign 2 "center" -adjustableColumn2 1;
+			floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kInvert_Saturation")) -field true  -cw3 60 40 40 -cc "" -pre 2 -min 0 -max 100 -value 0 -adjustableColumn 3 RH_VCP_invertSat;
+			$BN_applySat=`button -w 50 -label (VCP_uiRes("m_RH_VCP.kInvert_Apply"))`;
+		setParent ..;
+		rowLayout -numberOfColumns 2 -cw2 200 50 -columnAlign 2 "center" -adjustableColumn2 1;
+			floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kInvert_Value")) -field true  -cw3 60 40 40 -cc "" -pre 2 -min 0 -max 100 -value 0 -adjustableColumn 3 RH_VCP_invertVal;
+			$BN_applyVal=`button -w 50 -label (VCP_uiRes("m_RH_VCP.kInvert_Apply"))`;
+		setParent ..;
+	setParent ..;
+
+	VCP_SetupInvertSlider("RH_VCP_invertRGB", $BN_applyRGB, "RGB");
+	VCP_SetupInvertSlider("RH_VCP_invertColour", $BN_applyColour, "HS");
+	VCP_SetupInvertSlider("RH_VCP_invertAlpha", $BN_applyAlpha, "A");
+	VCP_SetupInvertSlider("RH_VCP_invertRed", $BN_applyRed, "R");
+	VCP_SetupInvertSlider("RH_VCP_invertGreen", $BN_applyGreen, "G");
+	VCP_SetupInvertSlider("RH_VCP_invertBlue", $BN_applyBlue, "B");
+	VCP_SetupInvertSlider("RH_VCP_invertHue", $BN_applyHue, "H");
+	VCP_SetupInvertSlider("RH_VCP_invertSat", $BN_applySat, "S");
+	VCP_SetupInvertSlider("RH_VCP_invertVal", $BN_applyVal, "V");
+}
+
+global proc
+VCP_CreateFrame_Invert(int $hasFrame)
+{
+	if ($hasFrame)
+	{
+		int $frameCollapse = `optionVar -query "RH_VCP_FrameAdjustInvert"`;
+		$frame = `frameLayout -label (VCP_uiRes("m_RH_VCP.kInvert_FrameTitle"))
+					-labelIndent 4
+					-borderStyle "etchedIn"
+					-collapsable true
+					-collapse $frameCollapse
+					-marginWidth 4
+					-marginHeight 4`;
+			VCP_CreateFrame_Invert_Content();
+		setParent ..;
+
+		frameLayout	-e -collapseCommand "optionVar -intValue RH_VCP_FrameAdjustInvert 1" $frame;
+		frameLayout	-e -expandCommand "optionVar -intValue RH_VCP_FrameAdjustInvert 0" $frame;
+	}
+	else
+	{
+		$frame = `frameLayout
+					-labelVisible false
+					-borderStyle "etchedIn"
+					-collapsable false
+					-marginWidth 4
+					-marginHeight 4`;
+			VCP_CreateFrame_Invert_Content();
+		setParent ..;
+	}
+}

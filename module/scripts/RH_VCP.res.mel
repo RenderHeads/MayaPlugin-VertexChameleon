@@ -1,0 +1,511 @@
+//
+// Vertex Chameleon Maya Plugin Source Code
+// Copyright (C) 2007-2014 RenderHeads Ltd.
+//
+// This source is available for distribution and/or modification
+// only under the terms of the MIT license.  All rights reserved.
+//
+// The source is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// FITNESS FOR A PARTICULAR PURPOSE. See the MIT license
+// for more details.
+//
+
+// General
+VCP_DisplayString "Can't find menu item: " m_RH_VCP.kGeneral_CantFindMenuItem;
+
+// Shelf Icon
+VCP_DisplayString "Launch Vertex Chameleon UI" m_RH_VCP.kGeneral_ShelfLaunch;
+
+// Tab Titles
+VCP_DisplayString "Apply" m_RH_VCP.kTabTitle_Apply;
+VCP_DisplayString "Adjust" m_RH_VCP.kTabTitle_Adjust;
+VCP_DisplayString "Extra" m_RH_VCP.kTabTitle_Extra;
+VCP_DisplayString "Settings" m_RH_VCP.kTabTitle_Settings;
+VCP_DisplayString "About" m_RH_VCP.kTabTitle_About;
+
+// About - Credits
+VCP_DisplayString "Credits" m_RH_VCP.kCredits_Title;
+VCP_DisplayString "Graphics software and tools development" m_RH_VCP.kCredits_SoftwareDevelopment;
+
+// About - License
+VCP_DisplayString "License" m_RH_VCP.kLicense_Title;
+VCP_DisplayString "Registered to: " m_RH_VCP.kLicense_RegisteredTo;
+VCP_DisplayString "Enter New Key" m_RH_VCP.kLicense_EnterNewKey;
+VCP_DisplayString "Purchase Key" m_RH_VCP.kLicense_PurchaseKey;
+VCP_DisplayString "Status: " m_RH_VCP.kLicense_Status;
+
+// About - Plugin Info
+VCP_DisplayString "Plugin Info" m_RH_VCP.kPluginInfo_Title;
+VCP_DisplayString "plugin not loaded" m_RH_VCP.kPluginInfo_NotLoaded;
+VCP_DisplayString "Name: " m_RH_VCP.kPluginInfo_Name;
+VCP_DisplayString "Version: " m_RH_VCP.kPluginInfo_Version;
+VCP_DisplayString "Built: " m_RH_VCP.kPluginInfo_Built;
+VCP_DisplayString "Vendor: " m_RH_VCP.kPluginInfo_Vendor;
+VCP_DisplayString "Path: " m_RH_VCP.kPluginInfo_Path;
+
+// About - Links
+VCP_DisplayString "Links" m_RH_VCP.kLinks_Title;
+VCP_DisplayString "Vertex Chameleon Website" m_RH_VCP.kLinks_VCWebsite;
+VCP_DisplayString "Plugin Discussion Forum" m_RH_VCP.kLinks_PluginForum;
+VCP_DisplayString "Documentation (Local)" m_RH_VCP.kLinks_DocsLocal;
+VCP_DisplayString "Documentation (Internet)" m_RH_VCP.kLinks_DocsInternet;
+
+// Settings - UI
+VCP_DisplayString "UI Settings" m_RH_VCP.kUISettings_Title;
+VCP_DisplayString "Channel Range Display" m_RH_VCP.kUISettings_ChannelRange;
+VCP_DisplayString "Add to Polygons Menu" m_RH_VCP.kUISettings_AddMenu;
+VCP_DisplayString "Add To Shelf" m_RH_VCP.kUISettings_AddShelf;
+VCP_DisplayString "Dock UI in ChannelBox" m_RH_VCP.kUISettings_DockChannelBox;
+VCP_DisplayString "Tear Off to Separate Window" m_RH_VCP.kUISettings_TearOff;
+
+// Settings - Operation
+VCP_DisplayString "Operation Settings" m_RH_VCP.kOpSettings_Title;
+VCP_DisplayString "Preserve Vertex-Face Colours (Hard Edges)" m_RH_VCP.kOpSettings_PreserveVertexFace;
+VCP_DisplayString "Sync Vertex Paint Colour" m_RH_VCP.kOpSettings_SyncPaint;
+VCP_DisplayString "Verbose Output" m_RH_VCP.kOpSettings_VerboseOutput;
+VCP_DisplayString "Reset Settings on Startup" m_RH_VCP.kOpSettings_ResetStartup;
+VCP_DisplayString "Reset Settings to Defaults" m_RH_VCP.kOpSettings_ResetDefaults;
+
+// Menus
+VCP_DisplayString "Vertex Chameleon" m_RH_VCP.kMenu_Title;
+VCP_DisplayString "Chameleon Window" m_RH_VCP.kMenu_ChameleonWindow;
+
+// Menu - Tools
+VCP_DisplayString "Tools" m_RH_VCP.kMenu_ToolsTitle;
+VCP_DisplayString "Layers (Requires Maya 7.0 or greater)" m_RH_VCP.kMenu_LayersMaya7Required;
+VCP_DisplayString "Colour Swatch" m_RH_VCP.kMenu_ColourSwatch;
+VCP_DisplayString "Colour Inspector" m_RH_VCP.kMenu_ColourInspector;
+
+// Menu - View
+VCP_DisplayString "View" m_RH_VCP.kMenu_ViewTitle;
+VCP_DisplayString "Reset" m_RH_VCP.kMenu_ViewReset;
+VCP_DisplayString "Vertex Colour Only" m_RH_VCP.kMenu_ViewVertexColourOnly;
+VCP_DisplayString "+ Texture" m_RH_VCP.kMenu_PlusTexture;
+VCP_DisplayString "+ Texture + Light" m_RH_VCP.kMenu_PlusTextureLight;
+
+// Menu - Shortcuts (Maya Tools)
+VCP_DisplayString "Maya Tools" m_RH_VCP.kMenu_MayaToolsTitle;
+VCP_DisplayString "Apply Color" m_RH_VCP.kMenu_Shortcut_ApplyColor;
+VCP_DisplayString "Paint Color" m_RH_VCP.kMenu_Shortcut_PaintColor;
+VCP_DisplayString "Bake (Maya)" m_RH_VCP.kMenu_Shortcut_BakeMaya;
+VCP_DisplayString "Bake (Mental Ray)" m_RH_VCP.kMenu_Shortcut_BakeMentalRay;
+VCP_DisplayString "Attribute Map Import/Export" m_RH_VCP.kMenu_Shortcut_AttributeMapImportExport;
+VCP_DisplayString "Transfer Colours" m_RH_VCP.kMenu_Shortcut_TransferColours;
+VCP_DisplayString "ColorSet Editor" m_RH_VCP.kMenu_Shortcut_ColorSetEditor;
+VCP_DisplayString "Component Editor" m_RH_VCP.kMenu_Shortcut_ComponentEditor;
+
+// Menu - Help
+VCP_DisplayString "Help" m_RH_VCP.kMenu_HelpTitle;
+VCP_DisplayString "License Manager" m_RH_VCP.kMenu_Help_LicenseManager;
+VCP_DisplayString "Documentation (Local)" m_RH_VCP.kMenu_Help_DocsLocal;
+VCP_DisplayString "Documentation (Internet)" m_RH_VCP.kMenu_Help_DocsInternet;
+VCP_DisplayString "Report a Bug" m_RH_VCP.kMenu_Help_ReportBug;
+VCP_DisplayString "Make a Suggestion" m_RH_VCP.kMenu_Help_MakeSuggestion;
+VCP_DisplayString "Vertex Chameleon Website" m_RH_VCP.kMenu_Help_VCWebsite;
+VCP_DisplayString "Plugin Discussion Forum" m_RH_VCP.kMenu_Help_PluginForum;
+VCP_DisplayString "Reset Settings" m_RH_VCP.kMenu_Help_ResetSettings;
+
+// Menu - Operations
+VCP_DisplayString "Operations" m_RH_VCP.kMenu_OperationsTitle;
+
+// Menu - Operations - Apply
+VCP_DisplayString "Apply" m_RH_VCP.kMenu_ApplyTitle;
+VCP_DisplayString "Apply Colour" m_RH_VCP.kMenu_ApplyColour;
+VCP_DisplayString "Randomise Components" m_RH_VCP.kMenu_RandomiseCompontents;
+VCP_DisplayString "Apply 3D Texture" m_RH_VCP.kMenu_Apply3DTexture;
+VCP_DisplayString "Gradient Tool" m_RH_VCP.kMenu_GradientTool;
+VCP_DisplayString "Mental Ray Baking" m_RH_VCP.kMenu_MentalRayBaking;
+
+// Menu - Operations - Adjust
+VCP_DisplayString "Adjust" m_RH_VCP.kMenu_AdjustTitle;
+VCP_DisplayString "Adjust RGB" m_RH_VCP.kMenu_AdjustRGB;
+VCP_DisplayString "Adjust HSV" m_RH_VCP.kMenu_AdjustHSV;
+VCP_DisplayString "Adjust Brightness Contrast" m_RH_VCP.kMenu_AdjustBC;
+VCP_DisplayString "Adjust Levels" m_RH_VCP.kMenu_AdjustLevels;
+VCP_DisplayString "Filters" m_RH_VCP.kMenu_Filters;
+VCP_DisplayString "Nudge Tool" m_RH_VCP.kMenu_NudgeTool;
+
+// Menu - Operations - Extra
+VCP_DisplayString "Extra" m_RH_VCP.kMenu_ExtraTitle;
+VCP_DisplayString "Channel Clamp" m_RH_VCP.kMenu_ChannelClamp;
+VCP_DisplayString "Channel Saturate" m_RH_VCP.kMenu_ChannelSaturate;
+VCP_DisplayString "Channel Swap" m_RH_VCP.kMenu_ChannelSwap;
+VCP_DisplayString "Channel Contrast" m_RH_VCP.kMenu_ChannelContrast;
+VCP_DisplayString "Invert" m_RH_VCP.kMenu_Invert;
+VCP_DisplayString "Posterize" m_RH_VCP.kMenu_Posterize;
+VCP_DisplayString "Normals -> RGB" m_RH_VCP.kMenu_Normals2RGB;
+VCP_DisplayString "Facetise" m_RH_VCP.kMenu_Facetise;
+
+// Main UI
+VCP_DisplayString "Toggle Wire" m_RH_VCP.kMainUI_ToggleWire;
+VCP_DisplayString "Default" m_RH_VCP.kMainUI_ComponentMode_Default;
+VCP_DisplayString "As Vertices" m_RH_VCP.kMainUI_ComponentMode_Vertices;
+VCP_DisplayString "As Vertex-Faces" m_RH_VCP.kMainUI_ComponentMode_VertexFaces;
+
+// Attribute Map
+VCP_DisplayString "Vertex Colour Attribute Map" m_RH_VCP.kAttribMap_WindowTitle;
+VCP_DisplayString " Attribute Maps " m_RH_VCP.kAttribMap_FrameTitle;
+
+// Colour Swatch
+VCP_DisplayString "Colour Swatch" m_RH_VCP.kSwatch_WindowTitle;
+VCP_DisplayString "Swatch" m_RH_VCP.kSwatch_WindowTitleShort;
+
+// Blend Modes
+VCP_DisplayString "Replace" m_RH_VCP.kBlendMode_Replace;
+VCP_DisplayString "Add" m_RH_VCP.kBlendMode_Add;
+VCP_DisplayString "Subtract" m_RH_VCP.kBlendMode_Subtract;
+VCP_DisplayString "Multiply" m_RH_VCP.kBlendMode_Multiply;
+VCP_DisplayString "Difference" m_RH_VCP.kBlendMode_Difference;
+VCP_DisplayString "Screen" m_RH_VCP.kBlendMode_Screen;
+VCP_DisplayString "Overlay" m_RH_VCP.kBlendMode_Overlay;
+VCP_DisplayString "Lighten Only" m_RH_VCP.kBlendMode_LightenOnly;
+VCP_DisplayString "Darken Only" m_RH_VCP.kBlendMode_DarkenOnly;
+VCP_DisplayString "Dodge" m_RH_VCP.kBlendMode_Dodge;
+VCP_DisplayString "Burn" m_RH_VCP.kBlendMode_Burn;
+VCP_DisplayString "Hue Replace" m_RH_VCP.kBlendMode_HueReplace;
+VCP_DisplayString "Saturation Replace" m_RH_VCP.kBlendMode_SaturationReplace;
+VCP_DisplayString "Colour Replace" m_RH_VCP.kBlendMode_ColourReplace;
+VCP_DisplayString "Value Replace" m_RH_VCP.kBlendMode_ValueReplace;
+
+// Adjust - Brightness/Contrast
+VCP_DisplayString "Brightness / Contrast" m_RH_VCP.kBC_FrameTitle;
+VCP_DisplayString "Brightness" m_RH_VCP.kBC_Brightness;
+VCP_DisplayString "Contrast" m_RH_VCP.kBC_Contrast;
+
+// Adjust - Filters
+VCP_DisplayString "Filters" m_RH_VCP.kFilters_FrameTitle;
+VCP_DisplayString "Blur" m_RH_VCP.kFilters_Blur;
+VCP_DisplayString "Sharpen" m_RH_VCP.kFilters_Sharpen;
+VCP_DisplayString "Dilate" m_RH_VCP.kFilters_Dilate;
+VCP_DisplayString "Erode" m_RH_VCP.kFilters_Erode;
+VCP_DisplayString "Blending" m_RH_VCP.kFilters_Blending;
+VCP_DisplayString "Apply" m_RH_VCP.kFilters_Apply;
+
+// Adjust - HSV
+VCP_DisplayString "HSV" m_RH_VCP.kHSV_FrameTitle;
+VCP_DisplayString "Hue" m_RH_VCP.kHSV_Hue;
+VCP_DisplayString "Saturation" m_RH_VCP.kHSV_Saturation;
+VCP_DisplayString "Value" m_RH_VCP.kHSV_Value;
+
+// Adjust - Levels
+VCP_DisplayString "Levels" m_RH_VCP.kLevels_FrameTitle;
+VCP_DisplayString "inBlack" m_RH_VCP.kLevels_InBlack;
+VCP_DisplayString "inWhite" m_RH_VCP.kLevels_InWhite;
+VCP_DisplayString "inGamma" m_RH_VCP.kLevels_InGamma;
+VCP_DisplayString "Outblack" m_RH_VCP.kLevels_OutBlack;
+VCP_DisplayString "OutWhite" m_RH_VCP.kLevels_OutWhite;
+
+// Adjust - Nudge
+VCP_DisplayString "Nudge Tool" m_RH_VCP.kNudge_FrameTitle;
+VCP_DisplayString "Red" m_RH_VCP.kNudge_Red;
+VCP_DisplayString "+ Red" m_RH_VCP.kNudge_RedA;
+VCP_DisplayString "- Red" m_RH_VCP.kNudge_RedR;
+VCP_DisplayString "Yellow" m_RH_VCP.kNudge_Yellow;
+VCP_DisplayString "+ Yellow" m_RH_VCP.kNudge_YellowA;
+VCP_DisplayString "- Yellow" m_RH_VCP.kNudge_YellowR;
+VCP_DisplayString "Green" m_RH_VCP.kNudge_Green;
+VCP_DisplayString "+ Green" m_RH_VCP.kNudge_GreenA;
+VCP_DisplayString "- Green" m_RH_VCP.kNudge_GreenR;
+VCP_DisplayString "Cyan" m_RH_VCP.kNudge_Cyan;
+VCP_DisplayString "+ Cyan" m_RH_VCP.kNudge_CyanA;
+VCP_DisplayString "- Cyan" m_RH_VCP.kNudge_CyanR;
+VCP_DisplayString "Blue" m_RH_VCP.kNudge_Blue;
+VCP_DisplayString "+ Blue" m_RH_VCP.kNudge_BlueA;
+VCP_DisplayString "- Blue" m_RH_VCP.kNudge_BlueR;
+VCP_DisplayString "Purple" m_RH_VCP.kNudge_Purple;
+VCP_DisplayString "+ Purple" m_RH_VCP.kNudge_PurpleA;
+VCP_DisplayString "- Purple" m_RH_VCP.kNudge_PurpleR;
+VCP_DisplayString "White" m_RH_VCP.kNudge_White;
+VCP_DisplayString "+ White" m_RH_VCP.kNudge_WhiteA;
+VCP_DisplayString "+ Black" m_RH_VCP.kNudge_WhiteR;
+VCP_DisplayString "Hue" m_RH_VCP.kNudge_Hue;
+VCP_DisplayString "+ Hue" m_RH_VCP.kNudge_HueA;
+VCP_DisplayString "- Hue" m_RH_VCP.kNudge_HueR;
+VCP_DisplayString "Saturation" m_RH_VCP.kNudge_Saturation;
+VCP_DisplayString "+ Sat" m_RH_VCP.kNudge_SaturationA;
+VCP_DisplayString "- Sat" m_RH_VCP.kNudge_SaturationR;
+VCP_DisplayString "Lightness" m_RH_VCP.kNudge_Lightness;
+VCP_DisplayString "+ Value" m_RH_VCP.kNudge_LightnessA;
+VCP_DisplayString "- Value" m_RH_VCP.kNudge_LightnessR;
+VCP_DisplayString "Contrast" m_RH_VCP.kNudge_Contrast;
+VCP_DisplayString "+ Contrast" m_RH_VCP.kNudge_ContrastA;
+VCP_DisplayString "- Contrast" m_RH_VCP.kNudge_ContrastR;
+VCP_DisplayString "Alpha" m_RH_VCP.kNudge_Alpha;
+VCP_DisplayString "+ Alpha" m_RH_VCP.kNudge_AlphaA;
+VCP_DisplayString "- Alpha" m_RH_VCP.kNudge_AlphaR;
+VCP_DisplayString "Sharpen/Blur" m_RH_VCP.kNudge_SharpenBlur;
+VCP_DisplayString "Sharpen" m_RH_VCP.kNudge_Sharpen;
+VCP_DisplayString "Blur" m_RH_VCP.kNudge_Blur;
+VCP_DisplayString "Dilate/Erode" m_RH_VCP.kNudge_DilateErode;
+VCP_DisplayString "Dilate" m_RH_VCP.kNudge_Dilate;
+VCP_DisplayString "Erode" m_RH_VCP.kNudge_Erode;
+
+// Adjust - RGBA
+VCP_DisplayString "RGBA" m_RH_VCP.kRGBA_FrameTitle;
+VCP_DisplayString "Rainbow" m_RH_VCP.kRGBA_Rainbow;
+VCP_DisplayString "Red" m_RH_VCP.kRGBA_Red;
+VCP_DisplayString "Yellow" m_RH_VCP.kRGBA_Yellow;
+VCP_DisplayString "Green" m_RH_VCP.kRGBA_Green;
+VCP_DisplayString "Cyan" m_RH_VCP.kRGBA_Cyan;
+VCP_DisplayString "Blue" m_RH_VCP.kRGBA_Blue;
+VCP_DisplayString "Magenta" m_RH_VCP.kRGBA_Magenta;
+VCP_DisplayString "Alpha" m_RH_VCP.kRGBA_Alpha;
+
+// Apply - 3D Texture
+VCP_DisplayString "Apply 3D Texture" m_RH_VCP.k3DTexture_FrameTitle;
+VCP_DisplayString "Apply" m_RH_VCP.k3DTexture_Apply;
+VCP_DisplayString "Create" m_RH_VCP.k3DTexture_Create;
+VCP_DisplayString "Delete" m_RH_VCP.k3DTexture_Delete;
+VCP_DisplayString "Texture Type:" m_RH_VCP.k3DTexture_TextureType;
+VCP_DisplayString "Edit Attributes" m_RH_VCP.k3DTexture_EditAttribs;
+VCP_DisplayString "Scale" m_RH_VCP.k3DTexture_Scale;
+VCP_DisplayString "RSeed" m_RH_VCP.k3DTexture_RandomSeed;
+VCP_DisplayString "Blending" m_RH_VCP.k3DTexture_Blending;
+VCP_DisplayString "crater" m_RH_VCP.k3DTexture_Crater;
+VCP_DisplayString "leather" m_RH_VCP.k3DTexture_Leather;
+VCP_DisplayString "stucco" m_RH_VCP.k3DTexture_Stucco;
+VCP_DisplayString "volumeNoise" m_RH_VCP.k3DTexture_VolumeNoise;
+VCP_DisplayString "wood" m_RH_VCP.k3DTexture_Wood;
+
+// Apply - Apply Colour
+VCP_DisplayString "Apply Colour" m_RH_VCP.kApplyColour_FrameTitle;
+VCP_DisplayString "Selection" m_RH_VCP.kApplyColour_Selection;
+VCP_DisplayString "Auto" m_RH_VCP.kApplyColour_Auto;
+
+// Apply - Replace Colour
+VCP_DisplayString "Replace Colour" m_RH_VCP.kReplaceColour_FrameTitle;
+VCP_DisplayString "Auto Apply" m_RH_VCP.kReplaceColour_AutoApply;
+VCP_DisplayString "Just Channel" m_RH_VCP.kReplaceColour_JustChannel;
+VCP_DisplayString "Hue" m_RH_VCP.kReplaceColour_Hue;
+VCP_DisplayString "H" m_RH_VCP.kReplaceColour_HueS;
+VCP_DisplayString "Sat" m_RH_VCP.kReplaceColour_Saturation;
+VCP_DisplayString "S" m_RH_VCP.kReplaceColour_SaturationS;
+VCP_DisplayString "Value" m_RH_VCP.kReplaceColour_Value;
+VCP_DisplayString "V" m_RH_VCP.kReplaceColour_ValueS;
+VCP_DisplayString "Red" m_RH_VCP.kReplaceColour_Red;
+VCP_DisplayString "R" m_RH_VCP.kReplaceColour_RedS;
+VCP_DisplayString "Green" m_RH_VCP.kReplaceColour_Green;
+VCP_DisplayString "G" m_RH_VCP.kReplaceColour_GreenS;
+VCP_DisplayString "Blue" m_RH_VCP.kReplaceColour_Blue;
+VCP_DisplayString "B" m_RH_VCP.kReplaceColour_BlueS;
+VCP_DisplayString "Alpha" m_RH_VCP.kReplaceColour_Alpha;
+VCP_DisplayString "A" m_RH_VCP.kReplaceColour_AlphaS;
+VCP_DisplayString "Replace RGBA" m_RH_VCP.kReplaceColour_ReplaceRGBA;
+
+// Apply - Blend Colour
+VCP_DisplayString "Blend Colour" m_RH_VCP.kBlendColour_FrameTitle;
+VCP_DisplayString "Blending" m_RH_VCP.kBlendColour_Blending;
+VCP_DisplayString "Apply" m_RH_VCP.kBlendColour_Apply;
+
+// Apply - Gradient
+VCP_DisplayString "Gradient Tool" m_RH_VCP.kGradient_FrameTitle;
+VCP_DisplayString "Ramp" m_RH_VCP.kGradient_Ramp;
+VCP_DisplayString "2 Colour" m_RH_VCP.kGradient_2Colour;
+VCP_DisplayString "Multi Colour" m_RH_VCP.kGradient_MultiColour;
+
+VCP_DisplayString "Multi Colour" m_RH_VCP.kGradient_MultiColourFrameTitle;
+VCP_DisplayString "Create Ramp" m_RH_VCP.kGradient_CreateRamp;
+VCP_DisplayString "Colour" m_RH_VCP.kGradient_Colour;
+VCP_DisplayString "Transparency" m_RH_VCP.kGradient_Transparency;
+
+VCP_DisplayString "2 Colour" m_RH_VCP.kGradient_2ColourFrameTitle;
+VCP_DisplayString "Start Colour" m_RH_VCP.kGradient_StartColour;
+VCP_DisplayString "End Colour" m_RH_VCP.kGradient_EndColour;
+VCP_DisplayString "<- Swap ->" m_RH_VCP.kGradient_Swap;
+
+VCP_DisplayString "Type:" m_RH_VCP.kGradient_Type;
+VCP_DisplayString "X-Axis" m_RH_VCP.kGradient_XAxis;
+VCP_DisplayString "Y-Axis" m_RH_VCP.kGradient_YAxis;
+VCP_DisplayString "Z-Axis" m_RH_VCP.kGradient_ZAxis;
+VCP_DisplayString "Spherical" m_RH_VCP.kGradient_Spherical;
+
+VCP_DisplayString "Linear Gradient Settings" m_RH_VCP.kGradient_LinearFrameTitle;
+VCP_DisplayString "Use World Bounds" m_RH_VCP.kGradient_UseWorldBounds;
+
+VCP_DisplayString "Spherical Gradient Settings" m_RH_VCP.kGradient_SphericalFrameTitle;
+VCP_DisplayString "Center Point" m_RH_VCP.kGradient_CenterPoint;
+VCP_DisplayString "Override Selection" m_RH_VCP.kGradient_OverrideSelection;
+VCP_DisplayString "Get From Selection" m_RH_VCP.kGradient_GetFromSelection;
+VCP_DisplayString "Radius" m_RH_VCP.kGradient_Radius;
+
+VCP_DisplayString "Repeat" m_RH_VCP.kGradient_Repeat;
+VCP_DisplayString "Clamp" m_RH_VCP.kGradient_Clamp;
+VCP_DisplayString "Wrap" m_RH_VCP.kGradient_Wrap;
+VCP_DisplayString "Mirror" m_RH_VCP.kGradient_Mirror;
+VCP_DisplayString "Repeats" m_RH_VCP.kGradient_Repeats;
+VCP_DisplayString "Offset" m_RH_VCP.kGradient_Offset;
+VCP_DisplayString "Reverse Direction" m_RH_VCP.kGradient_ReverseDirection;
+
+VCP_DisplayString "Blending" m_RH_VCP.kGradient_Blending;
+VCP_DisplayString "Apply" m_RH_VCP.kGradient_Apply;
+
+// Apply - Random Components
+VCP_DisplayString "Apply Random Components" m_RH_VCP.kRandomComp_FrameTitle;
+VCP_DisplayString "Red" m_RH_VCP.kRandomComp_Red;
+VCP_DisplayString "Green" m_RH_VCP.kRandomComp_Green;
+VCP_DisplayString "Blue" m_RH_VCP.kRandomComp_Blue;
+VCP_DisplayString "Alpha" m_RH_VCP.kRandomComp_Alpha;
+VCP_DisplayString "Hue" m_RH_VCP.kRandomComp_Hue;
+VCP_DisplayString "Saturation" m_RH_VCP.kRandomComp_Saturation;
+VCP_DisplayString "Value" m_RH_VCP.kRandomComp_Value;
+VCP_DisplayString "Blending" m_RH_VCP.kRandomComp_Blending;
+VCP_DisplayString "Apply" m_RH_VCP.kRandomComp_Apply;
+
+// Apply - Mental Ray Baking
+VCP_DisplayString "Mental Ray Baking" m_RH_VCP.kMRBake_FrameName;
+VCP_DisplayString "Texture" m_RH_VCP.kMRBake_Texture;
+VCP_DisplayString "Bake Texture" m_RH_VCP.kMRBake_BakeTexture;
+VCP_DisplayString "Lighting" m_RH_VCP.kMRBake_Lighting;
+VCP_DisplayString "Bake Shadows" m_RH_VCP.kMRBake_BakeShadows;
+VCP_DisplayString "Bake Lighting" m_RH_VCP.kMRBake_BakeLighting;
+VCP_DisplayString "Ambient Occlusion" m_RH_VCP.kMRBake_AmbientOcclusion;
+VCP_DisplayString "Rays" m_RH_VCP.kMRBake_Rays;
+VCP_DisplayString "Falloff" m_RH_VCP.kMRBake_Falloff;
+VCP_DisplayString "Blend" m_RH_VCP.kMRBake_Blend;
+VCP_DisplayString "Replace" m_RH_VCP.kMRBake_Replace;
+VCP_DisplayString "Multiply" m_RH_VCP.kMRBake_Multiply;
+VCP_DisplayString "Bake Occlusion" m_RH_VCP.kMRBake_BakeOcclusion;
+
+// Tool - Colour Inspector
+VCP_DisplayString "Colour Inspector" m_RH_VCP.kColInspector_WindowName;
+VCP_DisplayString "Min" m_RH_VCP.kColInspector_Min;
+VCP_DisplayString "Max" m_RH_VCP.kColInspector_Max;
+VCP_DisplayString "Avg" m_RH_VCP.kColInspector_Average;
+VCP_DisplayString "Unique Colours" m_RH_VCP.kColInspector_UniqueColours;
+VCP_DisplayString "R" m_RH_VCP.kColInspector_R;
+VCP_DisplayString "G" m_RH_VCP.kColInspector_G;
+VCP_DisplayString "B" m_RH_VCP.kColInspector_B;
+VCP_DisplayString "A" m_RH_VCP.kColInspector_A;
+VCP_DisplayString "H" m_RH_VCP.kColInspector_H;
+VCP_DisplayString "S" m_RH_VCP.kColInspector_S;
+VCP_DisplayString "V" m_RH_VCP.kColInspector_V;
+VCP_DisplayString "Refresh" m_RH_VCP.kColInspector_Refresh;
+
+// Tool - Colour Swatch
+VCP_DisplayString "Colour Swatch" m_RH_VCP.kColSwatch_WindowName;
+VCP_DisplayString "New" m_RH_VCP.kColSwatch_New;
+VCP_DisplayString "Load" m_RH_VCP.kColSwatch_Load;
+VCP_DisplayString "delete" m_RH_VCP.kColSwatch_Delete;
+VCP_DisplayString "copy" m_RH_VCP.kColSwatch_Copy;
+VCP_DisplayString "save" m_RH_VCP.kColSwatch_Save;
+VCP_DisplayString "grad" m_RH_VCP.kColSwatch_Gradient;
+VCP_DisplayString "rand" m_RH_VCP.kColSwatch_Random;
+VCP_DisplayString "Error" m_RH_VCP.kColSwatch_Error;
+VCP_DisplayString "A swatch named '^1s' already exists." m_RH_VCP.kColSwatch_AlreadyExists;
+VCP_DisplayString "A swatch named" m_RH_VCP.kColSwatch_AlreadyExists_Split1;
+VCP_DisplayString "already exists." m_RH_VCP.kColSwatch_AlreadyExists_Split2;
+VCP_DisplayString "Please remove or rename the existing swatch." m_RH_VCP.kColSwatch_RemoveOrRename;
+VCP_DisplayString "Please remove or rename the existing swatch before loading the new swatch." m_RH_VCP.kColSwatch_RemoveOrRename2;
+
+// Extra - Saturate
+VCP_DisplayString "Saturate" m_RH_VCP.kSaturate_FrameTitle;
+VCP_DisplayString "Min" m_RH_VCP.kSaturate_Min;
+VCP_DisplayString "Max" m_RH_VCP.kSaturate_Max;
+VCP_DisplayString "Red" m_RH_VCP.kSaturate_Red;
+VCP_DisplayString "Green" m_RH_VCP.kSaturate_Green;
+VCP_DisplayString "Blue" m_RH_VCP.kSaturate_Blue;
+VCP_DisplayString "Alpha" m_RH_VCP.kSaturate_Alpha;
+VCP_DisplayString "Hue" m_RH_VCP.kSaturate_Hue;
+VCP_DisplayString "Sat" m_RH_VCP.kSaturate_Saturation;
+VCP_DisplayString "Value" m_RH_VCP.kSaturate_Value;
+VCP_DisplayString "Apply" m_RH_VCP.kSaturate_Apply;
+VCP_DisplayString "Apply RGBA" m_RH_VCP.kSaturate_ApplyRGBA;
+VCP_DisplayString "Apply HSV" m_RH_VCP.kSaturate_ApplyHSV;
+
+// Extra - Contrast Channels
+VCP_DisplayString "Contrast Channels" m_RH_VCP.kContrastChannels_FrameTitle;
+VCP_DisplayString "Red" m_RH_VCP.kContrastChannels_Red;
+VCP_DisplayString "Green" m_RH_VCP.kContrastChannels_Green;
+VCP_DisplayString "Blue" m_RH_VCP.kContrastChannels_Blue;
+VCP_DisplayString "Alpha" m_RH_VCP.kContrastChannels_Alpha;
+VCP_DisplayString "Hue" m_RH_VCP.kContrastChannels_Hue;
+VCP_DisplayString "Saturation" m_RH_VCP.kContrastChannels_Saturation;
+VCP_DisplayString "Value" m_RH_VCP.kContrastChannels_Value;
+
+// Extra - Clamp
+VCP_DisplayString "Clamp" m_RH_VCP.kClamp_FrameTitle;
+VCP_DisplayString "Min" m_RH_VCP.kClamp_Min;
+VCP_DisplayString "Max" m_RH_VCP.kClamp_Max;
+VCP_DisplayString "Red" m_RH_VCP.kClamp_Red;
+VCP_DisplayString "Green" m_RH_VCP.kClamp_Green;
+VCP_DisplayString "Blue" m_RH_VCP.kClamp_Blue;
+VCP_DisplayString "Alpha" m_RH_VCP.kClamp_Alpha;
+VCP_DisplayString "Hue" m_RH_VCP.kClamp_Hue;
+VCP_DisplayString "Sat" m_RH_VCP.kClamp_Saturation;
+VCP_DisplayString "Value" m_RH_VCP.kClamp_Value;
+VCP_DisplayString "Apply" m_RH_VCP.kClamp_Apply;
+VCP_DisplayString "Apply RGBA" m_RH_VCP.kClamp_ApplyRGBA;
+VCP_DisplayString "Apply HSV" m_RH_VCP.kClamp_ApplyHSV;
+
+// Extra - Channel Inverter
+VCP_DisplayString "Channel Inverter" m_RH_VCP.kInvert_FrameTitle;
+VCP_DisplayString "RGB" m_RH_VCP.kInvert_RGB;
+VCP_DisplayString "Colour" m_RH_VCP.kInvert_Colour;
+VCP_DisplayString "Alpha" m_RH_VCP.kInvert_Alpha;
+VCP_DisplayString "Red" m_RH_VCP.kInvert_Red;
+VCP_DisplayString "Green" m_RH_VCP.kInvert_Green;
+VCP_DisplayString "Blue" m_RH_VCP.kInvert_Blue;
+VCP_DisplayString "Hue" m_RH_VCP.kInvert_Hue;
+VCP_DisplayString "Saturation" m_RH_VCP.kInvert_Saturation;
+VCP_DisplayString "Value" m_RH_VCP.kInvert_Value;
+VCP_DisplayString "Apply" m_RH_VCP.kInvert_Apply;
+
+// Extra - Posterize
+VCP_DisplayString "Posterize" m_RH_VCP.kPosterize_FrameTitle;
+VCP_DisplayString "RGB" m_RH_VCP.kPosterize_RGB;
+VCP_DisplayString "Red" m_RH_VCP.kPosterize_Red;
+VCP_DisplayString "Green" m_RH_VCP.kPosterize_Green;
+VCP_DisplayString "Blue" m_RH_VCP.kPosterize_Blue;
+VCP_DisplayString "Alpha" m_RH_VCP.kPosterize_Alpha;
+VCP_DisplayString "Hue" m_RH_VCP.kPosterize_Hue;
+VCP_DisplayString "Saturation" m_RH_VCP.kPosterize_Saturation;
+VCP_DisplayString "Value" m_RH_VCP.kPosterize_Value;
+
+// Extra - Channel Swapper
+VCP_DisplayString "Channel Swap" m_RH_VCP.kChanSwap_FrameTitle;
+VCP_DisplayString "Red" m_RH_VCP.kChanSwap_Red;
+VCP_DisplayString "Green" m_RH_VCP.kChanSwap_Green;
+VCP_DisplayString "Blue" m_RH_VCP.kChanSwap_Blue;
+VCP_DisplayString "Hue" m_RH_VCP.kChanSwap_Hue;
+VCP_DisplayString "Saturation" m_RH_VCP.kChanSwap_Saturation;
+VCP_DisplayString "Value" m_RH_VCP.kChanSwap_Value;
+VCP_DisplayString "Alpha" m_RH_VCP.kChanSwap_Alpha;
+VCP_DisplayString "Source" m_RH_VCP.kChanSwap_Source;
+VCP_DisplayString "Target" m_RH_VCP.kChanSwap_Target;
+VCP_DisplayString "Between Colour Sets" m_RH_VCP.kChanSwap_BetweenColourSets;
+VCP_DisplayString "Between Colour Sets" m_RH_VCP.kChanSwap_BetweenColourSetsFrameTitle;
+VCP_DisplayString "Update From Selection" m_RH_VCP.kChanSwap_UpdateFromSelection;
+VCP_DisplayString "Copy" m_RH_VCP.kChanSwap_Copy;
+VCP_DisplayString "Swap" m_RH_VCP.kChanSwap_Swap;
+
+// Extra - Convert normals to colour
+VCP_DisplayString "Normals->RGB" m_RH_VCP.kConvNorm_FrameTitle;
+VCP_DisplayString "Colour from Object-Space Normals" m_RH_VCP.kConvNorm_ApplyObject;
+VCP_DisplayString "Colour from World-Space Normals" m_RH_VCP.kConvNorm_ApplyWorld;
+
+// Extra - Facetise
+VCP_DisplayString "Facetise" m_RH_VCP.kFacetise_FrameTitle;
+VCP_DisplayString "Apply" m_RH_VCP.kFacetise_Apply;
+
+// Layers
+VCP_DisplayString "Vertex Colour Layers" m_RH_VCP.kLayers_WindowTitle;
+VCP_DisplayString "Layers" m_RH_VCP.kLayers_WindowTitleShort;
+
+VCP_DisplayString "Final Composite" m_RH_VCP.kLayers_FinalComposite;
+VCP_DisplayString "Active Layer" m_RH_VCP.kLayers_ActiveLayer;
+VCP_DisplayString "Duplicate" m_RH_VCP.kLayers_Duplicate;
+VCP_DisplayString "Flatten" m_RH_VCP.kLayers_Flatten;
+VCP_DisplayString "Up" m_RH_VCP.kLayers_Up;
+VCP_DisplayString "Down" m_RH_VCP.kLayers_Down;
+VCP_DisplayString "Refresh" m_RH_VCP.kLayers_Refresh;
+VCP_DisplayString "Create" m_RH_VCP.kLayers_Create;
+VCP_DisplayString "Delete" m_RH_VCP.kLayers_Delete;
+VCP_DisplayString "View" m_RH_VCP.kLayers_View;
+VCP_DisplayString "Mesh" m_RH_VCP.kLayers_Mesh;
+
+VCP_DisplayString "Error" m_RH_VCP.kLayers_Error;
+VCP_DisplayString "A layer named '^1s' already exists." m_RH_VCP.kLayers_LayerXExists;
+VCP_DisplayString "A layer named" m_RH_VCP.kLayers_LayerXExists_Split1;
+VCP_DisplayString "already exists." m_RH_VCP.kLayers_LayerXExists_Split2;
+VCP_DisplayString "Please remove or rename the existing layer." m_RH_VCP.kLayers_RemoveRenameLayer;

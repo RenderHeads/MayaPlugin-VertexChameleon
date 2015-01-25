@@ -1,0 +1,166 @@
+//
+// Vertex Chameleon Maya Plugin Source Code
+// Copyright (C) 2007-2014 RenderHeads Ltd.
+//
+// This source is available for distribution and/or modification
+// only under the terms of the MIT license.  All rights reserved.
+//
+// The source is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// FITNESS FOR A PARTICULAR PURPOSE. See the MIT license
+// for more details.
+//
+
+global int $VCP_AdjustSliderMoving = 0;
+
+global proc
+VCP_AdjustPosterize(string $sliderName, string $channel)
+{
+	global string $RH_VCP_OldWireDisplay;
+	global int $VCP_AdjustSliderMoving;
+
+	float $amount = `floatSliderGrp -query -value $sliderName`;
+
+	if ($amount != 0.0)
+	{
+		if ($VCP_AdjustSliderMoving == 0)
+		{
+			VCP_CreateColourStoreForSelection();
+			$VCP_AdjustSliderMoving = 1;
+			$RH_VCP_OldWireDisplay = `displayPref -q -wsa`;
+			displayPref -wireframeOnShadedActive "none";
+			undoInfo -swf 0;
+		}
+		VCP_AdjustSliderPosterizeCommand($channel, $amount, true);
+	}
+}
+
+
+global proc
+VCP_AdjustSliderPosterizeCommand(string $channel, float $amount, int $skipundo)
+{
+	string $cmd = "RH_VertexPolyColour -op 306 -nodeSource -posterize " + $channel + " -posterizeAmount " + ($amount * 0.01) + " ";
+	if (`optionVar -query RH_VCP_Verbose` > 0)
+	{
+		$cmd += " -verbose ";
+	}
+	if (`optionVar -query RH_VCP_NoUndo`)
+		$cmd += " -nun ";
+
+	if ($skipundo > 0)
+	{
+		//$cmd += " -noUndo ";
+	}
+	int $forceComponent = `optionVar -query RH_VCP_ComponentOverride`;
+	if ($forceComponent > 1)
+	{
+		if ($forceComponent == 2)
+			$cmd += " -forceComponent 1 ";
+		if ($forceComponent == 3)
+			$cmd += " -forceComponent 2 ";
+	}
+	$cmd += " -channelMask " + `optionVar -q RH_VCP_ChannelMask` + " ";
+	eval($cmd);
+	//print $cmd;
+}
+
+global proc
+VCP_FinAdjustPosterize(string $sliderName, string $channel)
+{
+	global string $RH_VCP_OldWireDisplay;
+	global int $VCP_AdjustSliderMoving;
+
+	float $amount = `floatSliderGrp -query -value $sliderName`;
+
+	floatSliderGrp -edit -value 0.0 $sliderName;
+
+	// If the amount is zero apply it BEFORE we reenable undo's
+	if ($amount == 0.0)
+	{
+		VCP_AdjustSliderPosterizeCommand($channel, $amount, false);
+		undoInfo -swf 1;
+	}
+	else
+	{
+		undoInfo -swf 1;
+		VCP_AdjustSliderPosterizeCommand($channel, $amount, false);
+	}
+
+	VCP_RemoveColourStoreForSelection();
+
+	$VCP_AdjustSliderMoving = 0;
+	displayPref -wireframeOnShadedActive $RH_VCP_OldWireDisplay;
+}
+
+proc
+VCP_SetupPosterizeSlider(string $sliderName, string $channel)
+{
+	$doCommand = ("VCP_FinAdjustPosterize " + $sliderName + " " + $channel);
+	floatSliderGrp -edit -changeCommand $doCommand $sliderName;
+	
+	$doCommand = ("VCP_AdjustPosterize " + $sliderName + " " + $channel);
+	floatSliderGrp -edit -dragCommand $doCommand $sliderName;
+}
+
+proc
+VCP_CreateFrame_Posterize_Content()
+{
+	columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 4;
+
+		$SL_quantise=`floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kPosterize_RGB")) -field true  -cw3 60 40 1 -cc "" -pre 2 -v 0 -min 0 -max 100 -adjustableColumn 3`;
+		separator;
+		columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 0;
+			$SL_quantiseR=`floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kPosterize_Red")) -field true  -cw3 60 40 1 -cc "" -pre 2 -min 0 -max 100 -value 0 -adjustableColumn 3`;
+			$SL_quantiseG=`floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kPosterize_Green")) -field true  -cw3 60 40 1 -cc "" -pre 2 -min 0 -max 100 -value 0 -adjustableColumn 3`;
+			$SL_quantiseB=`floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kPosterize_Blue")) -field true  -cw3 60 40 1 -cc "" -pre 2 -min 0 -max 100 -value 0 -adjustableColumn 3`;
+			$SL_quantiseA=`floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kPosterize_Alpha")) -field true  -cw3 60 40 1 -cc "" -pre 2 -min 0 -max 100 -value 0 -adjustableColumn 3`;
+		setParent ..;
+		separator;
+		columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 0;
+			$SL_quantiseH=`floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kPosterize_Hue")) -field true  -cw3 60 40 1 -cc "" -pre 2 -min 0 -max 100 -value 0 -adjustableColumn 3`;
+			$SL_quantiseS=`floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kPosterize_Saturation")) -field true  -cw3 60 40 1 -cc "" -pre 2 -min 0 -max 100 -value 0 -adjustableColumn 3`;
+			$SL_quantiseV=`floatSliderGrp -l (VCP_uiRes("m_RH_VCP.kPosterize_Value")) -field true  -cw3 60 40 1 -cc "" -pre 2 -min 0 -max 100 -value 0 -adjustableColumn 3`;
+		setParent ..;
+	setParent ..;
+
+	VCP_SetupPosterizeSlider($SL_quantise, "RGB");
+	VCP_SetupPosterizeSlider($SL_quantiseR, "R");
+	VCP_SetupPosterizeSlider($SL_quantiseG, "G");
+	VCP_SetupPosterizeSlider($SL_quantiseB, "B");
+	VCP_SetupPosterizeSlider($SL_quantiseA, "A");
+	VCP_SetupPosterizeSlider($SL_quantiseH, "H");
+	VCP_SetupPosterizeSlider($SL_quantiseS, "S");
+	VCP_SetupPosterizeSlider($SL_quantiseV, "V");
+}
+
+global proc
+VCP_CreateFrame_Posterize(int $hasFrame)
+{
+	if ($hasFrame)
+	{
+		int $frameCollapse = `optionVar -query "RH_VCP_FrameAdjustPosterize"`;
+		$frame = `frameLayout -label (VCP_uiRes("m_RH_VCP.kPosterize_FrameTitle"))
+					-labelIndent 4
+					-borderStyle "etchedIn"
+					-collapsable true
+					-collapse $frameCollapse
+					-marginWidth 4
+					-marginHeight 4`;
+			VCP_CreateFrame_Posterize_Content();
+		setParent ..;
+
+		frameLayout	-e -collapseCommand "optionVar -intValue RH_VCP_FrameAdjustPosterize 1" $frame;
+		frameLayout	-e -expandCommand "optionVar -intValue RH_VCP_FrameAdjustPosterize 0" $frame;
+	}
+	else
+	{
+		$frame = `frameLayout
+					-labelVisible false
+					-borderStyle "etchedIn"
+					-collapsable false
+					-marginWidth 4
+					-marginHeight 4`;
+			VCP_CreateFrame_Posterize_Content();
+		setParent ..;
+	}
+}

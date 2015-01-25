@@ -1,0 +1,159 @@
+//
+// Vertex Chameleon Maya Plugin Source Code
+// Copyright (C) 2007-2014 RenderHeads Ltd.
+//
+// This source is available for distribution and/or modification
+// only under the terms of the MIT license.  All rights reserved.
+//
+// The source is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// FITNESS FOR A PARTICULAR PURPOSE. See the MIT license
+// for more details.
+//
+
+proc
+VCP_SetupClampRow(string $name, string $channel, string $minVar, string $maxVar)
+{
+	float $min = `optionVar -q $minVar`;
+	float $max = `optionVar -q $maxVar`;
+
+	rowLayout -numberOfColumns 4 -columnWidth4 60 50 50 50 -adjustableColumn4 4
+		-columnAlign 1 "center" -columnAlign 2 "left" -columnAlign 3 "left" -columnAlign 4 "center";
+		text -label $name;
+		string $ffMin = `floatField -pre 2 -value $min -w 50 -minValue 0`;
+		string $ffMax = `floatField -pre 2 -value $max -w 50 -minValue 0`;
+		string $apply = `button -label (VCP_uiRes("m_RH_VCP.kClamp_Apply"))`;
+	setParent..;
+
+	$doCommand = "VCP_SetVarFromFloatField " + $ffMin + " " + $minVar;
+	floatField -edit -changeCommand $doCommand $ffMin;
+
+	$doCommand = "VCP_SetVarFromFloatField " + $ffMax + " " + $maxVar;
+	floatField -edit -changeCommand $doCommand $ffMax;
+
+	$cmd = "VCP_ClampChannel " +$channel + " " + $minVar + " " + $maxVar;
+	button -e -command $cmd $apply;
+}
+
+global proc
+VCP_ClampChannel(string $channel, string $minField, string $maxField)
+{
+	float $min = `optionVar -q $minField`;
+	float $max = `optionVar -q $maxField`;
+
+	string $cmd = "RH_VertexPolyColour -op 307 -clamp" + $channel + " " + $min + " " + $max;
+
+	if (`optionVar -query RH_VCP_NoUndo`)
+		$cmd += " -nun ";
+
+	$cmd += " -channelMask " + `optionVar -q RH_VCP_ChannelMask` + " ";
+	eval($cmd);
+}
+
+global proc
+VCP_ClampRGBA()
+{
+	float $minR = `optionVar -q RH_VCP_ClampMinR`;
+	float $maxR = `optionVar -q RH_VCP_ClampMaxR`;
+	float $minG = `optionVar -q RH_VCP_ClampMinG`;
+	float $maxG = `optionVar -q RH_VCP_ClampMaxG`;
+	float $minB = `optionVar -q RH_VCP_ClampMinB`;
+	float $maxB = `optionVar -q RH_VCP_ClampMaxB`;
+	float $minA = `optionVar -q RH_VCP_ClampMinA`;
+	float $maxA = `optionVar -q RH_VCP_ClampMaxA`;
+
+	string $cmd = "RH_VertexPolyColour -op 307 ";
+	if (`optionVar -query RH_VCP_NoUndo`)
+		$cmd += " -nun ";
+	$cmd += " -clampR " + $minR + " " + $maxR;
+	$cmd += " -clampG " + $minG + " " + $maxG;
+	$cmd += " -clampB " + $minB + " " + $maxB;
+	$cmd += " -clampA " + $minA + " " + $maxA;
+	$cmd += " -channelMask " + `optionVar -q RH_VCP_ChannelMask` + " ";
+	eval($cmd);
+}
+
+global proc
+VCP_ClampHSV()
+{
+	float $minH = `optionVar -q RH_VCP_ClampMinH`;
+	float $maxH = `optionVar -q RH_VCP_ClampMaxH`;
+	float $minS = `optionVar -q RH_VCP_ClampMinS`;
+	float $maxS = `optionVar -q RH_VCP_ClampMaxS`;
+	float $minV = `optionVar -q RH_VCP_ClampMinV`;
+	float $maxV = `optionVar -q RH_VCP_ClampMaxV`;
+
+	string $cmd = "RH_VertexPolyColour -op 307 ";
+	if (`optionVar -query RH_VCP_NoUndo`)
+		$cmd += " -nun ";
+	$cmd += " -clampH " + $minH + " " + $maxH;
+	$cmd += " -clampS " + $minS + " " + $maxS;
+	$cmd += " -clampV " + $minV + " " + $maxV;
+	$cmd += " -channelMask " + `optionVar -q RH_VCP_ChannelMask` + " ";
+	eval($cmd);
+}
+
+proc
+VCP_CreateFrame_Clamp_Content()
+{
+	columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 0;
+
+	rowLayout -numberOfColumns 4 -columnWidth4 60 50 50 50 -adjustableColumn4 4
+		-columnAlign 1 "center" -columnAlign 2 "left" -columnAlign 3 "left";
+		text -label "";
+		text -label (VCP_uiRes("m_RH_VCP.kClamp_Min"));
+		text -label (VCP_uiRes("m_RH_VCP.kClamp_Max"));
+		text -label "";
+	setParent..;
+
+	VCP_SetupClampRow((VCP_uiRes("m_RH_VCP.kClamp_Red")), "R", "RH_VCP_ClampMinR", "RH_VCP_ClampMaxR");
+	VCP_SetupClampRow((VCP_uiRes("m_RH_VCP.kClamp_Green")), "G", "RH_VCP_ClampMinG", "RH_VCP_ClampMaxG");
+	VCP_SetupClampRow((VCP_uiRes("m_RH_VCP.kClamp_Blue")), "B", "RH_VCP_ClampMinB", "RH_VCP_ClampMaxB");
+	VCP_SetupClampRow((VCP_uiRes("m_RH_VCP.kClamp_Alpha")), "A", "RH_VCP_ClampMinA", "RH_VCP_ClampMaxA");
+
+	string $applyRGBA = `button -label (VCP_uiRes("m_RH_VCP.kClamp_ApplyRGBA")) -h 30`;
+
+	VCP_SetupClampRow((VCP_uiRes("m_RH_VCP.kClamp_Hue")), "H", "RH_VCP_ClampMinH", "RH_VCP_ClampMaxH");
+	VCP_SetupClampRow((VCP_uiRes("m_RH_VCP.kClamp_Saturation")), "S", "RH_VCP_ClampMinS", "RH_VCP_ClampMaxS");
+	VCP_SetupClampRow((VCP_uiRes("m_RH_VCP.kClamp_Value")), "V", "RH_VCP_ClampMinV", "RH_VCP_ClampMaxV");
+
+	string $applyHSV = `button -label (VCP_uiRes("m_RH_VCP.kClamp_ApplyHSV")) -h 30`;
+
+	setParent ..;
+
+	button -e -command "VCP_ClampRGBA" $applyRGBA;
+	button -e -command "VCP_ClampHSV" $applyHSV;
+}
+
+
+global proc
+VCP_CreateFrame_Clamp(int $hasFrame)
+{
+	if ($hasFrame)
+	{
+		int $frameCollapse = `optionVar -query "RH_VCP_FrameAdjustClamp"`;
+		$frame = `frameLayout -label (VCP_uiRes("m_RH_VCP.kClamp_FrameTitle"))
+					-labelIndent 4
+					-borderStyle "etchedIn"
+					-collapsable true
+					-collapse $frameCollapse
+					-marginWidth 4
+					-marginHeight 4`;
+			VCP_CreateFrame_Clamp_Content();
+		setParent ..;
+
+		frameLayout	-e -collapseCommand "optionVar -intValue RH_VCP_FrameAdjustClamp 1" $frame;
+		frameLayout	-e -expandCommand "optionVar -intValue RH_VCP_FrameAdjustClamp 0" $frame;
+	}
+	else
+	{
+		$frame = `frameLayout
+					-labelVisible false
+					-borderStyle "etchedIn"
+					-collapsable false
+					-marginWidth 4
+					-marginHeight 4`;
+			VCP_CreateFrame_Clamp_Content();
+		setParent ..;
+	}
+}

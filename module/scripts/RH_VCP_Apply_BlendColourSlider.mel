@@ -1,0 +1,129 @@
+//
+// Vertex Chameleon Maya Plugin Source Code
+// Copyright (C) 2007-2014 RenderHeads Ltd.
+//
+// This source is available for distribution and/or modification
+// only under the terms of the MIT license.  All rights reserved.
+//
+// The source is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// FITNESS FOR A PARTICULAR PURPOSE. See the MIT license
+// for more details.
+//
+
+global int $VCP_AdjustSliderMoving = 0;
+
+global proc
+VCP_AdjustBlend(string $sliderName)
+{
+	global string $RH_VCP_OldWireDisplay;
+	global int $VCP_AdjustSliderMoving;
+
+	float $amount = `floatSliderGrp -query -value $sliderName`;
+
+	if ($amount != 0.0)
+	{
+		if ($VCP_AdjustSliderMoving == 0)
+		{
+			VCP_CreateColourStoreForSelection();
+
+			$VCP_AdjustSliderMoving = 1;
+			$RH_VCP_OldWireDisplay = `displayPref -q -wsa`;
+			displayPref -wireframeOnShadedActive "none";
+			undoInfo -swf 0;
+		}
+	}
+	if ($VCP_AdjustSliderMoving == 1)
+	{
+		VCP_AdjustBlendSliderCommand($amount, true);
+	}
+}
+
+global proc
+VCP_FinAdjustBlend(string $sliderName)
+{
+	global string $RH_VCP_OldWireDisplay;
+	global int $VCP_AdjustSliderMoving;
+
+	float $amount = `floatSliderGrp -query -value $sliderName`;
+
+	floatSliderGrp -edit -value 0.0 $sliderName;
+
+	// If the amount is zero apply it BEFORE we reenable undo's
+	if ($amount == 0.0)
+	{
+		VCP_AdjustBlendSliderCommand($amount, false);
+		undoInfo -swf 1;
+	}
+	else
+	{
+		undoInfo -swf 1;
+		VCP_AdjustBlendSliderCommand($amount, false);
+	}
+
+	VCP_RemoveColourStoreForSelection();
+
+	$VCP_AdjustSliderMoving = 0;
+	displayPref -wireframeOnShadedActive $RH_VCP_OldWireDisplay;
+}
+
+
+global proc
+VCP_AdjustBlendSliderCommand(float $amount, int $skipundo)
+{
+	//global float $VCP_Apply_RGBA[];
+	global string $VCP_ApplyCanvasRGB;
+	global string $VCP_ApplyCanvasAlpha;
+
+	float $crgb[] = `canvas -query -rgbValue $VCP_ApplyCanvasRGB`;
+	float $calpha[] = `canvas -query -rgbValue $VCP_ApplyCanvasAlpha`;
+
+	string $cmd = "RH_VertexPolyColour -op 400 -nodeSource ";
+	$cmd += " -colorR " + $crgb[0];
+	$cmd += " -colorG " + $crgb[1];
+	$cmd += " -colorB " + $crgb[2];
+	$cmd += " -colorA " + $calpha[0];
+	$cmd += " -masterBlend " + $amount * 0.01;
+
+	float $blendAmount = `optionVar -query "RH_Col_BlendAmount"` * 0.01;
+	if ($blendAmount != 0.0)
+	{
+		string $blendMode = `optionVar -query "RH_Col_BlendMode"`;
+		
+		$cmd += " -blend " + $blendAmount;
+		$cmd += " -blendMode \"" + $blendMode + "\"";
+	}
+
+	if (`optionVar -query RH_VCP_Verbose` > 0)
+	{
+		$cmd += " -verbose ";
+	}
+	if ($skipundo > 0)
+	{
+		//$cmd += " -noUndo ";
+	}
+	if (`optionVar -query RH_VCP_NoUndo`)
+		$cmd += " -nun ";
+
+	int $forceComponent = `optionVar -query RH_VCP_ComponentOverride`;
+	if ($forceComponent > 1)
+	{
+		if ($forceComponent == 2)
+			$cmd += " -forceComponent 1 ";
+		if ($forceComponent == 3)
+			$cmd += " -forceComponent 2 ";
+	}
+	$cmd += " -channelMask " + `optionVar -q RH_VCP_ChannelMask` + " ";
+
+	eval($cmd);
+}
+
+global proc
+VCP_SetupBlendSlider(string $sliderName)
+{
+	$doCommand = ("VCP_FinAdjustBlend " + $sliderName);
+	floatSliderGrp -edit -changeCommand $doCommand $sliderName;
+	
+	$doCommand = ("VCP_AdjustBlend " + $sliderName);
+	floatSliderGrp -edit -dragCommand $doCommand $sliderName;
+}
