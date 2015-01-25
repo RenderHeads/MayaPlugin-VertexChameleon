@@ -1,5 +1,5 @@
-# MayaPlugin-VertexChameleon
-Advanced vertex colouring plugin for Autodesk Maya
+# Vertex Chameleon
+######Advanced vertex colouring plugin for Autodesk Maya
 Created by RenderHeads Ltd in 2008, source released in 2015.
 Plugin website: http://renderheads.com/portfolio/VertexChameleon/
 
