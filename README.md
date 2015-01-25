@@ -3,6 +3,11 @@
 Created by RenderHeads Ltd in 2008, source released in 2015.
 Plugin website: http://renderheads.com/portfolio/VertexChameleon/
 
+##General
+
+Written in C++
+Maya scripts written in MEL
+
 ##Maya SDK Setup
 
 The core Maya SDK must be available to the plugin in order to compile.  The 3 folders needed are:
