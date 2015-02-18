@@ -4472,7 +4472,7 @@
 				Name="VCLinkerTool"
 				AdditionalOptions="/export:initializePlugin /export:uninitializePlugin"
 				AdditionalDependencies="OpenMaya.lib Foundation.lib OpenMayaUI.lib OpenMayaRender.lib ws2_32.lib wldap32.lib"
-				OutputFile="$(OutDir)\VertexChameleon2015x64.mll"
+				OutputFile="$(OutDir)\VertexChameleon2015.mll"
 				AdditionalLibraryDirectories="&quot;$(OutDir)&quot;;&quot;$(MAYALIBBASE)\Windows\2015\lib64&quot;"
 				RandomizedBaseAddress="1"
 				DataExecutionPrevention="0"
@@ -5073,11 +5073,11 @@
 				>
 			</File>
 			<File
-				RelativePath=".\..\module\scripts\RH_VCP.res.mel"
+				RelativePath=".\..\module\resources\ja_JP\RH_VCP.res.mel"
 				>
 			</File>
 			<File
-				RelativePath=".\..\module\resources\ja_JP\RH_VCP.res.mel"
+				RelativePath=".\..\module\scripts\RH_VCP.res.mel"
 				>
 			</File>
 			<File
