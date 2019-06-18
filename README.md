@@ -1,5 +1,4 @@
 # Vertex Chameleon ![Campy](https://github.com/RenderHeads/MayaPlugin-VertexChameleon/blob/master/docs/Chameleon.png "Campy")
-![Campy](https://github.com/RenderHeads/MayaPlugin-VertexChameleon/blob/master/docs/Chameleon.png "Campy")
 ###### Advanced vertex colouring plugin for Autodesk Maya
 Created by RenderHeads Ltd in 2008, source released in 2015.
 
@@ -47,7 +46,7 @@ Vertex Chameleon gives you complete control, real-time feedback and a wealth of 
 
 ## Open Source
 
-After selling this software for many years, we decided to open source it so that development could continue without us.
+After selling this software for many years, we decided to stop developing it, so we released it as an open source project.
 
 + Written in C++
 + Maya scripts written in MEL
