@@ -1,10 +1,11 @@
-# Vertex Chameleon ![Campy](https://github.com/RenderHeads/MayaPlugin-VertexChameleon/blob/master/docs/Chameleon.png "Campy")
+# Vertex Chameleon
 ###### Advanced vertex colouring plugin for Autodesk Maya
-Created by RenderHeads Ltd in 2008, source released in 2015.
 
 ![Banner](https://github.com/RenderHeads/MayaPlugin-VertexChameleon/blob/master/docs/banner1.jpg "Banner")
 
 ## Introduction
+
+Vertex Chameleon was a Maya plugin developed by RenderHeads Ltd between 2008-2013 and open-sourced in 2015.  The software is no longer supported or developed by RenderHeads Ltd and this serves as a historic archive.
 
 Vertex colours are heavily used in gaming platforms such as Nintendo Wii & DS, Sony PSP & Playstation 2, internet and mobile phone games. Even next-gen platforms such as PC, Xbox360 and PS3 use vertex colours to help improve performance, add extra detail and save vital memory.
 
@@ -100,7 +101,7 @@ For example:
 
 In Windows set the environment variable MAYALIBBASE to the path of your MayaSDK folder.  After adding the environment variable you may need to reopen Visual Studio.
 
-##Compiling for Windows
+## Compiling for Windows
 
 + The project solution is created with Visual Studio 2008.
 + Make sure you have set up your Maya SDK files as specified above
@@ -153,3 +154,5 @@ NOTE: If the installer fails to run, it may be because using a mapped drive
 ## Packaging for OSX and Linux
 
 + There is no setup, simply ZIP up all the files in the module folder to an appropriatly named ZIP file.
+
+![Campy](https://github.com/RenderHeads/MayaPlugin-VertexChameleon/blob/master/docs/Chameleon.png "Campy")
