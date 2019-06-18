@@ -1,14 +1,62 @@
-# Vertex Chameleon
-######Advanced vertex colouring plugin for Autodesk Maya
+# Vertex Chameleon 
+![Campy](https://github.com/RenderHeads/MayaPlugin-VertexChameleon/blob/master/docs/Chameleon.png "Campy"]
+###### Advanced vertex colouring plugin for Autodesk Maya
 Created by RenderHeads Ltd in 2008, source released in 2015.
-Plugin website: http://renderheads.com/portfolio/VertexChameleon/
 
-##General
+![Banner](https://github.com/RenderHeads/MayaPlugin-VertexChameleon/blob/master/docs/banner1.jpg "Banner")
 
-Written in C++
-Maya scripts written in MEL
+## Introduction
 
-##Maya SDK Setup
+Vertex colours are heavily used in gaming platforms such as Nintendo Wii & DS, Sony PSP & Playstation 2, internet and mobile phone games. Even next-gen platforms such as PC, Xbox360 and PS3 use vertex colours to help improve performance, add extra detail and save vital memory.
+
+Vertex Chameleon gives you complete control, real-time feedback and a wealth of functionality, resulting in increased productivity and better results.
+
+## Features
+
++ Designed to give rapid visual feedback
++ Photoshop-style layers (in Maya 7.0 and above)
++ Photoshop-style blend modes
++ Gradient tool
++ Colour swatches
++ Colour inspector tool
++ Integrated ambient occlusion, lighting and texture baking shortcuts
++ Filters:
+  + Adjust Red, Green, Blue, Alpha, Yellow, Cyan, Magenta
+  + Adjust Hue, Saturation, Value
+  + Brightness & Contast
+  Levels
+  Blur / Sharpen
+  Erode / Dilate
+  Posterize
+  Channel inverter
+  Channel clamp
+  Component randomise
+  3D texture sampling
+  Normals 2 Colour
+  Facetise
+
+![UI1](https://github.com/RenderHeads/MayaPlugin-VertexChameleon/blob/master/docs/VertexChameleon02.jpg "UI1")
+![UI2](https://github.com/RenderHeads/MayaPlugin-VertexChameleon/blob/master/docs/VertexChameleon04.jpg "UI2")
+
+## Links
+
++ [PDF Docs](https://github.com/RenderHeads/MayaPlugin-VertexChameleon/releases/download/v1.6.x/VertexChameleonDocumentation.pdf)
++ [Promotional Video](https://vimeo.com/1487692)
++ [Cached website 2011](https://web.archive.org/web/20111204060736/http://www.renderheads.com/portfolio/VertexChameleon/)
+
+## Open Source
+
+After selling this software for many years, we decided to open source it so that development could continue without us.
+
++ Written in C++
++ Maya scripts written in MEL
++ Builds for Windows, macOS and Linux
+
+If you are prompted for a license key, you can use the following:
+
+`contact@renderheads.com-(0 user license)-RenderHeads-RenderHeads-Vertex Chameleon 1.x-702S-6600-6C22-4861-702S-6600-4K22-4861-0N66-4R0G-546U-5N6X`
+
+## Maya SDK Setup
 
 The core Maya SDK must be available to the plugin in order to compile.  The 3 folders needed are:
  + include
@@ -79,11 +127,11 @@ To add a new configuration for another version of Maya:
 			For Maya 2011 32-bit it would read "$(OutDir)";"$(MAYALIBBASE)\Windows\2011\lib";
 			For Maya 2011 64-bit it would read "$(OutDir)";"$(MAYALIBBASE)\Windows\2011\lib64";
 
-##Compiling for MacOSX
+## Compiling for MacOSX
 
 + Use XCode to load the project "vertexChameleon.xcodeproj"
 
-##Compiling for Linux
+## Compiling for Linux
 
 + See build.sh and buildall.sh
 + Use 'make'
@@ -92,7 +140,7 @@ To add a new configuration for another version of Maya:
 	+ export MAYAVER=2011		(this is the maya version number, eg 8.5)
 	+ export MAYAVERs=2011		(this is the string version of the Maya version, so Maya 8.5 would be 85)
 
-##Packaging for Windows
+## Packaging for Windows
 
 + We build to a setup executable
 + Install NSIS v2.46 with the FindProcDLL plugin (http://nsis.sourceforge.net/FindProcDLL_plug-in)
@@ -102,6 +150,6 @@ To add a new configuration for another version of Maya:
 
 NOTE: If the installer fails to run, it may be because using a mapped drive
 
-##Packaging for OSX and Linux
+## Packaging for OSX and Linux
 
 + There is no setup, simply ZIP up all the files in the module folder to an appropriatly named ZIP file.
