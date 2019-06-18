@@ -1,5 +1,5 @@
-# Vertex Chameleon 
-![Campy](https://github.com/RenderHeads/MayaPlugin-VertexChameleon/blob/master/docs/Chameleon.png "Campy"]
+# Vertex Chameleon ![Campy](https://github.com/RenderHeads/MayaPlugin-VertexChameleon/blob/master/docs/Chameleon.png "Campy")
+![Campy](https://github.com/RenderHeads/MayaPlugin-VertexChameleon/blob/master/docs/Chameleon.png "Campy")
 ###### Advanced vertex colouring plugin for Autodesk Maya
 Created by RenderHeads Ltd in 2008, source released in 2015.
 
@@ -10,6 +10,8 @@ Created by RenderHeads Ltd in 2008, source released in 2015.
 Vertex colours are heavily used in gaming platforms such as Nintendo Wii & DS, Sony PSP & Playstation 2, internet and mobile phone games. Even next-gen platforms such as PC, Xbox360 and PS3 use vertex colours to help improve performance, add extra detail and save vital memory.
 
 Vertex Chameleon gives you complete control, real-time feedback and a wealth of functionality, resulting in increased productivity and better results.
+
+![UI1](https://github.com/RenderHeads/MayaPlugin-VertexChameleon/blob/master/docs/VertexChameleon02.jpg "UI1")
 
 ## Features
 
@@ -24,24 +26,23 @@ Vertex Chameleon gives you complete control, real-time feedback and a wealth of 
   + Adjust Red, Green, Blue, Alpha, Yellow, Cyan, Magenta
   + Adjust Hue, Saturation, Value
   + Brightness & Contast
-  Levels
-  Blur / Sharpen
-  Erode / Dilate
-  Posterize
-  Channel inverter
-  Channel clamp
-  Component randomise
-  3D texture sampling
-  Normals 2 Colour
-  Facetise
+  + Levels
+  + Blur / Sharpen
+  + Erode / Dilate
+  + Posterize
+  + Channel inverter
+  + Channel clamp
+  + Component randomise
+  + 3D texture sampling
+  + Normals 2 Colour
+  + Facetise
 
-![UI1](https://github.com/RenderHeads/MayaPlugin-VertexChameleon/blob/master/docs/VertexChameleon02.jpg "UI1")
 ![UI2](https://github.com/RenderHeads/MayaPlugin-VertexChameleon/blob/master/docs/VertexChameleon04.jpg "UI2")
 
 ## Links
 
-+ [PDF Docs](https://github.com/RenderHeads/MayaPlugin-VertexChameleon/releases/download/v1.6.x/VertexChameleonDocumentation.pdf)
-+ [Promotional Video](https://vimeo.com/1487692)
++ [PDF docs](https://github.com/RenderHeads/MayaPlugin-VertexChameleon/releases/download/v1.6.x/VertexChameleonDocumentation.pdf)
++ [Promotional video](https://vimeo.com/1487692)
 + [Cached website 2011](https://web.archive.org/web/20111204060736/http://www.renderheads.com/portfolio/VertexChameleon/)
 
 ## Open Source
